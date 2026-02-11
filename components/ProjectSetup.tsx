@@ -8,7 +8,7 @@ interface Props {
 }
 
 export const ProjectSetup: React.FC<Props> = ({ onComplete }) => {
-  const [formData, setFormData] = useState<ProjectContext>({
+  const [formData, setFormData] = useState<Omit<ProjectContext, 'id'>>({
     name: '',
     type: '',
     description: ''
@@ -17,7 +17,7 @@ export const ProjectSetup: React.FC<Props> = ({ onComplete }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.name && formData.type && formData.description) {
-      onComplete(formData);
+      onComplete(formData as ProjectContext);
     }
   };
 

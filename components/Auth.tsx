@@ -1,51 +1,112 @@
 
-import React from 'react';
-import { Lock, ShieldCheck, Zap } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShieldCheck, Loader2, UserCheck, Edit3, Mail } from 'lucide-react';
+import { supabase } from '../supabaseClient';
+import { UserRole } from '../types';
 
 interface Props {
-  onLogin: (user: string) => void;
+  onRoleSelect: (role: UserRole) => void;
 }
 
-export const Auth: React.FC<Props> = ({ onLogin }) => {
+export const Auth: React.FC<Props> = ({ onRoleSelect }) => {
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const handleMagicLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage('');
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: window.location.origin },
+      });
+      if (error) throw error;
+      onRoleSelect(UserRole.EDITOR);
+      setMessage('Access link sent to inbox.');
+    } catch (err: any) {
+      setMessage(err.message || 'Verification failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGuestLogin = async () => {
+    setLoading(true);
+    setMessage('');
+    try {
+      const { error } = await supabase.auth.signInAnonymously();
+      if (error) throw error;
+      onRoleSelect(UserRole.EDITOR);
+    } catch (err: any) {
+      setMessage(err.message || 'Guest protocol failure.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-[80vh] flex items-center justify-center p-6">
-      <div className="max-w-md w-full glass-card rounded-[3.5rem] p-12 shadow-2xl border border-white/10 relative overflow-hidden">
+    <div className="min-h-[85vh] flex items-center justify-center p-6">
+      <div className="max-w-xl w-full glass-card rounded-[4rem] p-16 shadow-2xl border border-white/5 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-teal-500 to-emerald-500" />
         
         <div className="text-center mb-12">
-          <div className="w-24 h-24 bg-slate-800 rounded-[2.5rem] border border-white/10 flex items-center justify-center mx-auto mb-8 shadow-2xl">
-            <Lock className="w-10 h-10 text-teal-400" />
+          <div className="w-24 h-24 bg-slate-800 rounded-[2.5rem] border border-white/10 flex items-center justify-center mx-auto mb-6 shadow-2xl">
+            <UserCheck className="w-10 h-10 text-teal-400" />
           </div>
-          <h2 className="text-4xl font-black text-white tracking-tighter mb-3">Initialize Protocol</h2>
-          <p className="text-slate-400 font-medium text-sm">Verify authorization for the command layer</p>
+          <h2 className="text-4xl font-black text-white tracking-tighter mb-3">Protocol Initiation</h2>
+          <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.3em]">Accessing Strategic Vault</p>
         </div>
 
-        <div className="space-y-4">
-          <button
-            onClick={() => onLogin('admin@productpulse.ai')}
-            className="w-full flex items-center justify-center gap-4 py-5 px-6 bg-slate-800 border-2 border-transparent hover:border-teal-500/50 hover:bg-slate-700/50 rounded-2xl transition-all group"
-          >
-            <div className="w-6 h-6 bg-rose-500 rounded-full flex items-center justify-center text-white text-[10px] font-black group-hover:scale-110 transition-transform">G</div>
-            <span className="text-xs font-black text-slate-200 uppercase tracking-widest">Enterprise Google Auth</span>
-          </button>
-
-          <button
-            onClick={() => onLogin('admin@productpulse.ai')}
-            className="w-full flex items-center justify-center gap-4 py-5 px-6 bg-teal-500 border-2 border-teal-500 rounded-2xl hover:bg-teal-400 hover:shadow-[0_0_30px_rgba(45,212,191,0.3)] transition-all group shadow-xl"
-          >
-            <Zap className="w-5 h-5 text-slate-900 group-hover:scale-110 transition-transform" />
-            <span className="text-xs font-black text-slate-900 uppercase tracking-widest">Direct Command SSO</span>
-          </button>
-        </div>
-
-        <div className="mt-12 pt-8 border-t border-white/5 text-center">
-          <div className="flex items-center justify-center gap-2 text-teal-500/60 mb-3">
-            <ShieldCheck className="w-4 h-4" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Quantum Security Enabled</span>
+        <div className="space-y-8">
+          <div className="p-8 rounded-[2rem] bg-teal-500/10 border-2 border-teal-500/20 text-center space-y-4">
+             <div className="w-12 h-12 bg-slate-900 text-teal-400 rounded-xl flex items-center justify-center mx-auto shadow-xl">
+               <Edit3 className="w-6 h-6" />
+             </div>
+             <div>
+               <h4 className="text-white font-black uppercase text-xs tracking-widest">Editor Access Engaged</h4>
+               <p className="text-[10px] text-teal-500/60 font-black uppercase tracking-widest mt-1">Full operational permissions granted</p>
+             </div>
           </div>
-          <p className="text-[9px] text-slate-500 font-bold px-8 leading-relaxed uppercase tracking-wider">
-            Proprietary strategy data is encrypted using high-entropy key pairs.
-          </p>
+
+          <button
+            onClick={handleGuestLogin}
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-4 py-6 px-8 bg-teal-500 text-slate-950 rounded-2xl hover:bg-teal-400 transition-all shadow-2xl shadow-teal-500/20 disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <ShieldCheck className="w-5 h-5" />}
+            <span className="text-xs font-black uppercase tracking-widest">Initialize as Authorized Editor</span>
+          </button>
+
+          <div className="relative py-2">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/5"></div></div>
+            <div className="relative flex justify-center text-[8px] uppercase font-black tracking-[0.4em] text-slate-700"><span className="bg-[#0F172A] px-4 italic text-slate-500 font-black">OR USE EMAIL GATEWAY</span></div>
+          </div>
+
+          <form onSubmit={handleMagicLink} className="space-y-4">
+            <input
+              type="email"
+              required
+              placeholder="Enterprise Email Address"
+              className="w-full px-6 py-5 rounded-2xl border-2 border-slate-800 bg-slate-900/50 text-white font-bold text-xs placeholder:text-slate-700 focus:border-teal-500 outline-none transition-all shadow-inner"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-5 bg-slate-800 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-700 transition-all border border-white/5"
+            >
+              Request Strategic Access Link
+            </button>
+          </form>
+
+          {message && (
+            <p className="text-center text-[10px] font-black text-teal-400 uppercase tracking-widest animate-pulse">
+              {message}
+            </p>
+          )}
         </div>
       </div>
     </div>

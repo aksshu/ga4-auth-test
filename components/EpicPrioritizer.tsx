@@ -1,12 +1,14 @@
 
 import React, { useState } from 'react';
-import { ProjectContext, EpicStory } from '../types';
+import { ProjectContext, EpicStory, UserRole } from '../types';
 import { COMPLIANCE_OPTIONS } from '../constants';
 import { getPrioritizedBacklog } from '../services/geminiService';
 import { FileUp, ListTodo, Target, ShieldCheck, ExternalLink, Calculator, Layers, ArrowRight, Check } from 'lucide-react';
 
+// Added role to Props interface to match usage in App.tsx
 interface Props {
   project: ProjectContext;
+  role: UserRole;
 }
 
 enum Step {
@@ -16,7 +18,7 @@ enum Step {
   RESULTS
 }
 
-export const EpicPrioritizer: React.FC<Props> = ({ project }) => {
+export const EpicPrioritizer: React.FC<Props> = ({ project, role }) => {
   const [step, setStep] = useState<Step>(Step.CONTEXT);
   const [marketInfo, setMarketInfo] = useState({
     isInternal: true,

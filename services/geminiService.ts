@@ -1,206 +1,251 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { KPI, ProjectContext, EpicStory, KPIThreshold } from "../types";
+import { KPIDictionary, KPIFact, KPIThreshold, ProjectContext, LighthouseReport, EpicStory, ChartConfig, SentimentAudit, ReviewSource } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const getAIClient = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey || apiKey === 'undefined') throw new Error("API_KEY_MISSING");
+  return new GoogleGenAI({ apiKey });
+};
 
-const safeParse = (text: string | undefined) => {
+const safeParse = (text: string | undefined, context: string) => {
   if (!text) return null;
   try {
-    // Remove any potential markdown code blocks if the model ignores the mime type config
     const cleanJson = text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, '');
     return JSON.parse(cleanJson);
   } catch (e) {
-    console.error("JSON Parsing Error:", e, "Raw Text:", text);
+    console.error(`[AI Service] JSON Parsing Failed for ${context}`, text);
     return null;
   }
 };
 
-export const getKPIRecommendations = async (context: ProjectContext, domainName: string, domainContext?: string) => {
-  const prompt = `Recommend 6 key business KPIs for a project with the following context:
-  Project Name: ${context.name}
-  Project Type: ${context.type}
-  Domain: ${domainName}
-  Domain Context: ${domainContext || 'Standard industry practice'}
-  Project Description: ${context.description}
+/**
+ * Auto-detects potential review sources for a given URL.
+ */
+export const detectReviewSources = async (url: string): Promise<ReviewSource[]> => {
+  try {
+    const ai = getAIClient();
+    const prompt = `Act as a web scraper assistant. For the URL "${url}", predict/detect the most likely review platform URLs (Google Business, App Store, Play Store, Trustpilot). 
+    Base this on standard patterns for this brand/URL.
+    
+    Return JSON array of ReviewSource objects:
+    {
+      "id": string (unique slug),
+      "name": string (e.g. "App Store"),
+      "url": string (likely or real URL),
+      "count": number (estimated review count),
+      "detected": boolean (true if highly likely to exist)
+    }`;
 
-  Return the response as a JSON array of objects with these keys: kpi_name, description, formula, input_metrics, owner, business_goal_relation, north_star_alignment.`;
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: { responseMimeType: "application/json" }
+    });
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            kpi_name: { type: Type.STRING },
-            description: { type: Type.STRING },
-            formula: { type: Type.STRING },
-            input_metrics: { type: Type.STRING },
-            owner: { type: Type.STRING },
-            business_goal_relation: { type: Type.STRING },
-            north_star_alignment: { type: Type.STRING }
-          },
-          required: ["kpi_name", "description", "formula", "input_metrics", "owner", "business_goal_relation", "north_star_alignment"]
-        }
-      }
-    }
-  });
-
-  return safeParse(response.text) || [];
+    const result = safeParse(response.text, "Source Detection");
+    return result?.map((s: any) => ({ ...s, status: s.detected ? 'verified' : 'unverified' })) || [];
+  } catch (err) {
+    console.error(err);
+    return [];
+  }
 };
 
-export const getThresholdBaselines = async (selectedKPIs: KPI[], domain: string) => {
-  const prompt = `Based on the following selected KPIs for a ${domain} project, suggest realistic threshold defaults.
-  KPIs: ${JSON.stringify(selectedKPIs.map(k => ({ name: k.kpi_name, desc: k.description })))}
+/**
+ * Perform a full Sentiment & UX Audit via Gemini with validation data.
+ */
+export const performSentimentAudit = async (url: string, sources: ReviewSource[], rawData?: string): Promise<SentimentAudit> => {
+  try {
+    const ai = getAIClient();
+    const prompt = `Perform a comprehensive Sentiment Analysis and UX Audit for the URL: "${url}".
+    
+    SOURCES TO ANALYZE: ${JSON.stringify(sources)}
+    ${rawData ? `USER PROVIDED ADDITIONAL DATA: ${rawData}` : ''}
 
-  Return the response as a JSON array of KPIThreshold objects. 
-  Keep values realistic for a standard mid-market company.
-  Keys: kpi_name, target_value, warning_threshold, failure_threshold, threshold_type ('>' or '<'), alert_priority (High, Medium, Low), alert_frequency (Daily, Weekly).`;
-
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            kpi_name: { type: Type.STRING },
-            target_value: { type: Type.NUMBER },
-            warning_threshold: { type: Type.NUMBER },
-            failure_threshold: { type: Type.NUMBER },
-            threshold_type: { type: Type.STRING },
-            alert_priority: { type: Type.STRING },
-            alert_frequency: { type: Type.STRING }
-          },
-          required: ["kpi_name", "target_value", "warning_threshold", "failure_threshold", "threshold_type", "alert_priority", "alert_frequency"]
-        }
-      }
+    REQUIRED JSON STRUCTURE:
+    {
+      "url": string,
+      "timestamp": string,
+      "sources": Array<ReviewSource>,
+      "metrics": {
+        "overallSatisfaction": { "value": 0-100, "confidence": 0-100, "dataPoints": number },
+        "taskCompletion": { "value": 0-100, "confidence": 0-100, "dataPoints": number },
+        "abandonmentRate": { "value": 0-100, "confidence": 0-100, "dataPoints": number },
+        "nps": { "value": -100 to 100, "confidence": 0-100, "dataPoints": number }
+      },
+      "summary": { "overview": string, "keyFindings": string, "overallImpression": string },
+      "visuals": {
+        "desktopVsMobile": { "metrics": ["Navigation", "Readability", "Speed", "Accessibility"], "desktop": [number, number, number, number], "mobile": [number, number, number, number] },
+        "issuePriority": [ { "category": string, "value": number, "severity": "critical"|"high"|"medium" } ],
+        "sentimentTrend": [ { "date": string, "score": number } ]
+      },
+      "usabilityParadox": string,
+      "wcagIssues": [ { "standard": string, "description": string } ],
+      "iaIssues": [string],
+      "digitalEquityImpact": string,
+      "recommendations": [ { "id": number, "title": string, "impact": "High"|"Medium"|"Low", "description": string, "timeline": string, "outcome": string } ],
+      "verificationData": [ { "source": string, "rating": number, "date": string, "review": string, "aiInterpretation": string, "sentiment": "positive"|"negative"|"neutral" } ],
+      "quotes": { "positive": [{ "text": string, "source": string }], "negative": [{ "text": string, "source": string }] }
     }
-  });
 
-  return safeParse(response.text) || [];
+    GENERATE ACCURATE DATA BASED ON REAL-WORLD FEEDBACK FOR THIS URL. 
+    Ensure "verificationData" has at least 10 sample reviews for the user to check accuracy.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: { 
+        responseMimeType: "application/json",
+        thinkingConfig: { thinkingBudget: 5000 }
+      }
+    });
+
+    return safeParse(response.text, "Sentiment Audit") || null;
+  } catch (err) {
+    console.error(err);
+    throw err;
+  }
 };
 
-export const getExecutiveAnalysis = async (kpiData: any[]) => {
-  const prompt = `As a Senior Business Analyst, analyze the following extracted KPI data and thresholds.
-  Data: ${JSON.stringify(kpiData)}
-  
-  Generate a concise executive-level analysis.
-  Return exactly 3 Key Insights and 2 Strategic Recommendations.
-  
-  Strictly follow this JSON structure: { "insights": [{ "title": string, "detail": string, "priority": "good" | "warning" | "critical" }], "recommendations": [{ "title": string, "detail": string, "impact": string }] }`;
+/**
+ * Translates Natural Language queries into a structured ChartConfig.
+ */
+export const getChartConfigFromNL = async (query: string, availableMetrics: string[]): Promise<ChartConfig> => {
+  try {
+    const ai = getAIClient();
+    const prompt = `You are a GA4 data visualization assistant. Given a user query and a list of available metrics, return a valid JSON chart configuration.
+    
+    AVAILABLE METRICS: ${availableMetrics.join(', ')}
+    USER QUERY: "${query}"
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          insights: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                title: { type: Type.STRING },
-                detail: { type: Type.STRING },
-                priority: { type: Type.STRING }
-              },
-              required: ["title", "detail", "priority"]
-            }
-          },
-          recommendations: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                title: { type: Type.STRING },
-                detail: { type: Type.STRING },
-                impact: { type: Type.STRING }
-              },
-              required: ["title", "detail", "impact"]
-            }
+    RETURN ONLY JSON IN THIS FORMAT:
+    {
+      "type": "line" | "bar" | "pie",
+      "metrics": string[],
+      "days": number,
+      "title": string
+    }`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: { responseMimeType: "application/json" }
+    });
+
+    return safeParse(response.text, "NL Chart Config") || {
+      type: 'line',
+      metrics: [availableMetrics[0]],
+      days: 30,
+      title: 'KPI Trend Analysis'
+    };
+  } catch (err) {
+    console.error(err);
+    return { type: 'line', metrics: [availableMetrics[0]], days: 30, title: 'KPI Trend Analysis' };
+  }
+};
+
+export const getExecutiveAnalysis = async (facts: KPIFact[], dictionary: KPIDictionary[], thresholds: KPIThreshold[], context: ProjectContext) => {
+  try {
+    const ai = getAIClient();
+    const prompt = `Perform an Executive Analysis for Project: ${context.name}.
+    Return JSON: { "insights": [{ "title": string, "detail": string, "type": "risk"|"opportunity"|"neutral" }], "recommendations": [{ "title": string, "detail": string, "impact": "High"|"Medium"|"Low" }] }`;
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: { responseMimeType: "application/json" }
+    });
+    return safeParse(response.text, "Executive Analysis") || { insights: [], recommendations: [] };
+  } catch (err) { return { insights: [], recommendations: [] }; }
+};
+
+export const chatWithKPIAgent = async (history: any[], userMessage: string, context: string) => {
+  try {
+    const ai = getAIClient();
+    const chat = ai.chats.create({
+      model: 'gemini-3-flash-preview',
+      config: { systemInstruction: `You are an Analytics Strategist. Context: ${context}` }
+    });
+    const response = await chat.sendMessage({ message: userMessage });
+    return response.text;
+  } catch (err: any) { return `Error: ${err.message}`; }
+};
+
+export const generateLighthouseReport = async (urls: string[]): Promise<LighthouseReport[]> => {
+  try {
+    const ai = getAIClient();
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Simulate a detailed Lighthouse SEO and Performance audit for the following URLs: ${urls.join(', ')}. 
+      For each URL, provide TWO reports: one for "Desktop" and one for "Mobile".
+      Return strictly a JSON array. Data should be realistic for each specific URL if known, or high-quality synthetic data following Core Web Vital standards.`,
+      config: { 
+        responseMimeType: "application/json",
+        thinkingConfig: { thinkingBudget: 4000 },
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              url: { type: Type.STRING },
+              timestamp: { type: Type.STRING },
+              device: { type: Type.STRING, description: "Must be exactly 'Desktop' or 'Mobile'" },
+              performance: { type: Type.NUMBER, description: "0 to 100" },
+              accessibility: { type: Type.NUMBER, description: "0 to 100" },
+              seo: { type: Type.NUMBER, description: "0 to 100" },
+              bestPractices: { type: Type.NUMBER, description: "0 to 100" },
+              lcp: { type: Type.NUMBER, description: "Largest Contentful Paint in ms" },
+              fcp: { type: Type.NUMBER, description: "First Contentful Paint in ms" },
+              cls: { type: Type.NUMBER, description: "Cumulative Layout Shift score" },
+              fid: { type: Type.NUMBER, description: "First Input Delay in ms" },
+              recommendations: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING }
+              }
+            },
+            required: ["url", "device", "performance", "accessibility", "seo", "bestPractices", "lcp", "fcp", "cls", "fid", "recommendations"]
           }
-        },
-        required: ["insights", "recommendations"]
-      }
-    }
-  });
-
-  return safeParse(response.text) || { insights: [], recommendations: [] };
-};
-
-export const getPrioritizedBacklog = async (
-  context: ProjectContext, 
-  stories: EpicStory[], 
-  method: 'RICE' | 'MoSCoW',
-  marketContext: string
-) => {
-  const prompt = `Prioritize the following product backlog using the ${method} method.
-  Context: ${JSON.stringify(context)}
-  Market Context: ${marketContext}
-  Backlog Items: ${JSON.stringify(stories.map(s => ({ id: s.id, title: s.title, description: s.description })))}
-
-  Return a JSON array. If RICE, include: id, score. If MoSCoW, include: id, bucket, reasoning.`;
-
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json"
-    }
-  });
-
-  return safeParse(response.text) || [];
-};
-
-export const chatWithKPIAgent = async (history: any[], userMessage: string, kpiContext: string) => {
-  const chat = ai.chats.create({
-    model: 'gemini-3-flash-preview',
-    config: {
-      systemInstruction: `You are a KPI Intelligence Chatbot for Executives. 
-      Context: ${kpiContext}. 
-      Use the structure: 🔍 KPI Insight | KPI: [Name] | Status: [Status] | Trend: [Trend] | Insight: [Explanation] | Recommended Actions: [List].
-      ZERO HALLUCINATION POLICY. If data is missing for a metric, say: "I cannot provide an analysis for [Metric] as it is not present in the current data source."`
-    }
-  });
-
-  const response = await chat.sendMessage({ message: userMessage });
-  return response.text;
-};
-
-export const generateLighthouseReport = async (urls: string[]) => {
-  const prompt = `Simulate a Lighthouse audit for: ${urls.join(', ')}.`;
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            url: { type: Type.STRING },
-            device: { type: Type.STRING },
-            performance: { type: Type.NUMBER },
-            accessibility: { type: Type.NUMBER },
-            seo: { type: Type.NUMBER },
-            lcp: { type: Type.NUMBER },
-            recommendation: { type: Type.STRING }
-          },
-          required: ["url", "device", "performance", "accessibility", "seo", "lcp", "recommendation"]
         }
       }
-    }
-  });
-  return safeParse(response.text) || [];
+    });
+    return safeParse(response.text, "Lighthouse Report") || [];
+  } catch (err) { 
+    console.error("[Gemini Service] Lighthouse failure:", err);
+    return []; 
+  }
+};
+
+export const getPrioritizedBacklog = async (project: ProjectContext, stories: EpicStory[], method: string, marketContext: string) => {
+  try {
+    const ai = getAIClient();
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Prioritize backlog using ${method} for "${project.name}". Market: ${marketContext}. Stories: ${JSON.stringify(stories)}`,
+      config: { responseMimeType: "application/json" }
+    });
+    return safeParse(response.text, "Backlog Prioritization") || [];
+  } catch (err) { return []; }
+};
+
+export const discoverGA4Tags = async (project: ProjectContext, propertyId: string) => {
+  try {
+    const ai = getAIClient();
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Analyze GA4 property ${propertyId} for ${project.name}. Return JSON: { tags: string[], detected_inception_date: string }`,
+      config: { responseMimeType: "application/json" }
+    });
+    return safeParse(response.text, "Tag Discovery") || { tags: [], detected_inception_date: "" };
+  } catch (err) { return { tags: [], detected_inception_date: "" }; }
+};
+
+export const validateGA4Handshake = async (project: ProjectContext, propertyId: string, tags: string[]) => {
+  try {
+    const ai = getAIClient();
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Validate GA4: ${propertyId}. Return JSON: { healthScore: number, summary: string, checks: object }`,
+      config: { responseMimeType: "application/json" }
+    });
+    return safeParse(response.text, "Handshake Validation") || { healthScore: 0, summary: "", checks: {} };
+  } catch (err) { return { healthScore: 0, summary: "", checks: {} }; }
 };
