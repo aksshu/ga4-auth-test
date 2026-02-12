@@ -77,6 +77,7 @@ useEffect(() => {
     console.log("OAuth success detected → moving to properties");
 
     setStep("properties");
+       fetchRealProperties();
 
     // Clean URL so refresh doesn't re-trigger
     window.history.replaceState({}, document.title, window.location.pathname);
