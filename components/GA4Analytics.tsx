@@ -167,7 +167,7 @@ export const GA4Analytics: React.FC<GA4AnalyticsProps> = ({
         ...missing.map(m => ({
           tenant_id: tid,
           kpi_key: m.kpi_key,
-          kpi_name: m.kpi_name,
+          // kpi_name: m.kpi_name,
           target_value: 0,
           warning_threshold: 0,
           failure_threshold: 0,
