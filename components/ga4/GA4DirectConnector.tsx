@@ -39,27 +39,58 @@ export const GA4DirectConnector: React.FC<Props> = ({ onComplete, onCancel }) =>
   const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0, status: '' });
   const [syncSummary, setSyncSummary] = useState({ added: 0, updated: 0 });
 
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    const authError = urlParams.get('error');
+  // useEffect(() => {
+  //   const urlParams = new URLSearchParams(window.location.search);
+  //   const code = urlParams.get('code');
+  //   const authError = urlParams.get('error');
     
-    if (authError) {
-      setError('Authentication failed: ' + authError);
-      setStep('auth');
-      return;
-    }
+  //   if (authError) {
+  //     setError('Authentication failed: ' + authError);
+  //     setStep('auth');
+  //     return;
+  //   }
     
-    if (code && !sessionStorage.getItem('ga4_access_token')) {
-      handleOAuthCallback(code);
-    } else if (sessionStorage.getItem('ga4_access_token')) {
-      const storedEmail = sessionStorage.getItem('ga4_user_email');
-      if (storedEmail) setUserEmail(storedEmail);
-      fetchRealProperties();
-      setStep('properties');
-    }
-  }, []);
+  //   if (code && !sessionStorage.getItem('ga4_access_token')) {
+  //     handleOAuthCallback(code);
+  //   } else if (sessionStorage.getItem('ga4_access_token')) {
+  //     const storedEmail = sessionStorage.getItem('ga4_user_email');
+  //     if (storedEmail) setUserEmail(storedEmail);
+  //     fetchRealProperties();
+  //     setStep('properties');
+  //   }
+  // }, []);
 
+useEffect(() => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const oauthSuccess = urlParams.get('oauth_success');
+  const error = urlParams.get('error');
+  
+  if (error) {
+    setError('Authentication failed: ' + error);
+    setStep('auth');
+    // Clean URL
+    window.history.replaceState({}, document.title, window.location.pathname);
+    return;
+  }
+  
+  if (oauthSuccess === 'true') {
+    // Check if tokens are in sessionStorage
+    const accessToken = sessionStorage.getItem('ga4_access_token');
+    const userEmail = sessionStorage.getItem('ga4_user_email');
+    
+    if (accessToken) {
+      setUserEmail(userEmail || '');
+      setStep('properties');
+      
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else {
+      setError('Authentication failed - no token found');
+      setStep('auth');
+    }
+  }
+}, []);
+  
   const handleAuth = () => {
     sessionStorage.removeItem('ga4_access_token');
     sessionStorage.removeItem('ga4_refresh_token');
