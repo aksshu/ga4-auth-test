@@ -1,39 +1,70 @@
-
-export default async function handler(req: any, res: any) {
+export default async function handler(req, res) {
   const code = req.query.code;
-  if (!code) return res.status(400).json({ error: 'No code provided' });
+  
+  if (!code) {
+    // Redirect back with error
+    return res.redirect('/?error=no_code');
+  }
   
   try {
+    // Exchange code for tokens
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
-        code,
-        client_id: process.env.GOOGLE_CLIENT_ID || '',
-        client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
-        redirect_uri: process.env.GOOGLE_REDIRECT_URI || '',
+        code: code,
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: process.env.GOOGLE_REDIRECT_URI,
         grant_type: 'authorization_code',
       }),
     });
     
-    const tokens: any = await tokenResponse.json();
-    if (tokens.error) return res.status(400).json({ error: tokens.error });
+    const tokens = await tokenResponse.json();
     
+    if (tokens.error) {
+      return res.redirect(`/?error=${encodeURIComponent(tokens.error)}`);
+    }
+    
+    // Get user email
     let userEmail = '';
     try {
       const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
         headers: { 'Authorization': `Bearer ${tokens.access_token}` }
       });
-      const userInfo: any = await userInfoResponse.json();
+      const userInfo = await userInfoResponse.json();
       userEmail = userInfo.email;
-    } catch (e) {}
+    } catch (e) {
+      console.log('Could not fetch user email');
+    }
     
-    return res.status(200).json({
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
-      user_email: userEmail
-    });
+    // INSTEAD OF RETURNING JSON, RETURN HTML THAT STORES TOKENS AND REDIRECTS
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Authenticating...</title>
+      </head>
+      <body>
+        <script>
+          // Store tokens in sessionStorage
+          sessionStorage.setItem('ga4_access_token', ${JSON.stringify(tokens.access_token)});
+          ${tokens.refresh_token ? `sessionStorage.setItem('ga4_refresh_token', ${JSON.stringify(tokens.refresh_token)});` : ''}
+          ${userEmail ? `sessionStorage.setItem('ga4_user_email', ${JSON.stringify(userEmail)});` : ''}
+          
+          // Redirect back to app
+          window.location.href = '/?oauth_success=true';
+        </script>
+        <p>Authenticating... Please wait.</p>
+      </body>
+      </html>
+    `;
+    
+    res.setHeader('Content-Type', 'text/html');
+    return res.status(200).send(html);
+    
   } catch (error) {
-    return res.status(500).json({ error: 'Auth failed' });
+    console.error('Token exchange error:', error);
+    return res.redirect(`/?error=${encodeURIComponent(error.message)}`);
   }
 }
