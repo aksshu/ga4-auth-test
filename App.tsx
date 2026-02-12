@@ -14,6 +14,7 @@ import { ProjectSelector } from './components/ProjectSelector';
 import { ChevronLeft, LogOut, MessageSquare, FileText, Sparkles, ArrowRight, RefreshCw, AlertCircle, ShieldAlert, Plus, FolderPlus, HelpCircle } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { databaseService } from './services/databaseService';
+import {  OAuthSuccess } from './components/ga4';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<any>(null);
