@@ -135,18 +135,66 @@ export const getChartConfigFromNL = async (query: string, availableMetrics: stri
   }
 };
 
+// export const getExecutiveAnalysis = async (facts: KPIFact[], dictionary: KPIDictionary[], thresholds: KPIThreshold[], context: ProjectContext) => {
+//   try {
+//     const ai = getAIClient();
+//     const prompt = `Perform an Executive Analysis for Project: ${context.name}.
+//     Return JSON: { "insights": [{ "title": string, "detail": string, "type": "risk"|"opportunity"|"neutral" }], "recommendations": [{ "title": string, "detail": string, "impact": "High"|"Medium"|"Low" }] }`;
+//     const response = await ai.models.generateContent({
+//       model: 'gemini-3-flash-preview',
+//       contents: prompt,
+//       config: { responseMimeType: "application/json" }
+//     });
+//     return safeParse(response.text, "Executive Analysis") || { insights: [], recommendations: [] };
+//   } catch (err) { return { insights: [], recommendations: [] }; }
+// };
 export const getExecutiveAnalysis = async (facts: KPIFact[], dictionary: KPIDictionary[], thresholds: KPIThreshold[], context: ProjectContext) => {
   try {
     const ai = getAIClient();
-    const prompt = `Perform an Executive Analysis for Project: ${context.name}.
-    Return JSON: { "insights": [{ "title": string, "detail": string, "type": "risk"|"opportunity"|"neutral" }], "recommendations": [{ "title": string, "detail": string, "impact": "High"|"Medium"|"Low" }] }`;
+    
+    const prompt = `You are a strategic analytics expert. Analyze the following KPI data and provide actionable insights.
+
+DATA:
+KPI Facts (actual performance data): ${JSON.stringify(facts)}
+KPI Dictionary (metric definitions): ${JSON.stringify(dictionary)}
+KPI Thresholds (target/warning/failure levels): ${JSON.stringify(thresholds)}
+
+TASK:
+1. Compare actual KPI values against defined thresholds
+2. Identify KPIs exceeding failure thresholds (critical risks)
+3. Identify KPIs below target but above warning (opportunities for improvement)
+4. Identify positive trends and strong performers
+5. Provide specific, data-driven recommendations
+
+Return ONLY valid JSON in this exact format:
+{
+  "insights": [
+    {
+      "title": "Brief insight title",
+      "detail": "Specific data point and what it means. Reference actual numbers from the data.",
+      "type": "risk" | "opportunity" | "neutral"
+    }
+  ],
+  "recommendations": [
+    {
+      "title": "Actionable recommendation",
+      "detail": "Specific steps to take based on the data analysis. Include which KPIs to focus on.",
+      "impact": "High" | "Medium" | "Low"
+    }
+  ]
+}`;
+
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
       config: { responseMimeType: "application/json" }
     });
+    
     return safeParse(response.text, "Executive Analysis") || { insights: [], recommendations: [] };
-  } catch (err) { return { insights: [], recommendations: [] }; }
+  } catch (err) { 
+    console.error("Executive analysis failed:", err);
+    return { insights: [], recommendations: [] }; 
+  }
 };
 
 export const chatWithKPIAgent = async (history: any[], userMessage: string, context: string) => {
