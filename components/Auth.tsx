@@ -7,7 +7,7 @@ import { UserRole } from '../types';
 interface Props {
   onRoleSelect: (role: UserRole) => void;
 }
-
+// test
 export const Auth: React.FC<Props> = ({ onRoleSelect }) => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
