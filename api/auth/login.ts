@@ -1,7 +1,7 @@
 
-import { VercelRequest, VercelResponse } from '@vercel/node';
+// import { VercelRequest, VercelResponse } from '@vercel/node';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
   const rootUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
   
   const options = {
