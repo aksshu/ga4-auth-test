@@ -1,6 +1,4 @@
-
 import React, { useState, useEffect } from 'react';
-// Fixed missing Target icon import from lucide-react
 import { 
   Database, Loader2, Key, CheckCircle, ShieldCheck, 
   ArrowRight, Globe, Check, AlertTriangle, 
@@ -56,6 +54,12 @@ export const GA4DirectConnector: React.FC<Props> = ({ onComplete, onCancel }) =>
   const [selectedProperty, setSelectedProperty] = useState<any>(null);
   const [expandedCats, setExpandedCats] = useState<string[]>(['user_metrics']);
   
+  // REAL DATA - not mock
+  const [properties, setProperties] = useState<any[]>([]);
+  const [isLoadingProperties, setIsLoadingProperties] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+  const [error, setError] = useState('');
+  
   const [selectedMetrics, setSelectedMetrics] = useState<GA4MetricSelection>({
     user_metrics: ['activeUsers', 'engagementRate'],
     session_metrics: ['sessions'],
@@ -69,18 +73,120 @@ export const GA4DirectConnector: React.FC<Props> = ({ onComplete, onCancel }) =>
   const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0, status: '' });
   const [syncSummary, setSyncSummary] = useState({ added: 0, updated: 0 });
 
-  const mockProperties = [
-    { id: '123456789', name: 'My E-commerce Store', account: 'Acme Business', email: 'admin@acme.com' },
-    { id: '987654321', name: 'NeoFit Mobile App', account: 'NeoFit Ventures', email: 'growth@neofit.io' },
-    { id: '456789123', name: 'Strategic Blog', account: 'Personal Portfolio', email: 'me@example.com' }
-  ];
+  // Check for OAuth callback on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const storedEmail = sessionStorage.getItem('ga4_user_email');
+    
+    if (code && !sessionStorage.getItem('ga4_access_token')) {
+      handleOAuthCallback(code);
+    } else if (storedEmail) {
+      setUserEmail(storedEmail);
+    }
+  }, []);
 
-  const handleAuth = () => {
-    setLoading(true);
-    setTimeout(() => {
+  // Fetch properties when step changes to 'properties'
+  useEffect(() => {
+    if (step === 'properties' && properties.length === 0) {
+      fetchRealProperties();
+    }
+  }, [step]);
+
+  // Handle OAuth callback
+  const handleOAuthCallback = async (code: string) => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const response = await fetch('/api/auth/callback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      });
+
+      const data = await response.json();
+      
+      if (data.access_token) {
+        // Store tokens securely
+        sessionStorage.setItem('ga4_access_token', data.access_token);
+        if (data.refresh_token) {
+          sessionStorage.setItem('ga4_refresh_token', data.refresh_token);
+        }
+        if (data.user_email) {
+          sessionStorage.setItem('ga4_user_email', data.user_email);
+          setUserEmail(data.user_email);
+        }
+        
+        // Clear the code from URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // Move to properties step
+        setStep('properties');
+      } else {
+        throw new Error(data.error || 'Failed to get access token');
+      }
+    } catch (error: any) {
+      console.error('OAuth callback error:', error);
+      setError(error.message || 'Authentication failed. Please try again.');
+      setStep('auth');
+    } finally {
       setLoading(false);
-      setStep('properties');
-    }, 1200);
+    }
+  };
+
+  // REAL OAuth - redirect to Google
+  const handleAuth = () => {
+    // Clear any existing tokens
+    sessionStorage.removeItem('ga4_access_token');
+    sessionStorage.removeItem('ga4_refresh_token');
+    sessionStorage.removeItem('ga4_user_email');
+    
+    // Redirect to OAuth login endpoint
+    window.location.href = '/api/auth/login';
+  };
+
+  // REAL API - Fetch properties from Google Analytics
+  const fetchRealProperties = async () => {
+    setIsLoadingProperties(true);
+    setError('');
+    
+    try {
+      const accessToken = sessionStorage.getItem('ga4_access_token');
+      
+      if (!accessToken) {
+        throw new Error('Not authenticated. Please reconnect.');
+      }
+
+      const response = await fetch('/api/ga4/properties', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch properties');
+      }
+
+      const data = await response.json();
+      
+      if (data.properties && data.properties.length > 0) {
+        setProperties(data.properties);
+      } else {
+        setError('No GA4 properties found. Make sure you have access to at least one GA4 property.');
+      }
+    } catch (error: any) {
+      console.error('Error fetching properties:', error);
+      setError(error.message || 'Failed to fetch properties. Please try reconnecting.');
+      
+      // If token expired, go back to auth
+      if (error.message.includes('401') || error.message.includes('token')) {
+        sessionStorage.clear();
+        setStep('auth');
+      }
+    } finally {
+      setIsLoadingProperties(false);
+    }
   };
 
   const applyPreset = (type: 'ecom' | 'saas' | 'marketing') => {
@@ -123,81 +229,142 @@ export const GA4DirectConnector: React.FC<Props> = ({ onComplete, onCancel }) =>
     }));
   };
 
+  // REAL API - Sync data from GA4
   const handleStartSync = async () => {
     setStep('syncing');
     setLoading(true);
+    setError('');
     
     try {
       const totalDays = dateRange;
-      setSyncProgress({ current: 0, total: totalDays, status: 'Initializing Strategic Tunnel...' });
+      setSyncProgress({ current: 0, total: totalDays, status: 'Initializing sync...' });
       
-      await new Promise(r => setTimeout(r, 800));
+      const accessToken = sessionStorage.getItem('ga4_access_token');
+      
+      if (!accessToken) {
+        throw new Error('Not authenticated');
+      }
+
+      // Calculate date range
+      const endDate = new Date().toISOString().split('T')[0];
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - dateRange);
+      const startDateStr = startDate.toISOString().split('T')[0];
+
+      // Prepare metrics for GA4 API
+      const allMetrics = Object.values(selectedMetrics).flat();
+      
+      if (allMetrics.length === 0) {
+        throw new Error('No metrics selected');
+      }
+
+      setSyncProgress(prev => ({ ...prev, status: 'Fetching data from GA4...' }));
+
+      // Call API to fetch GA4 data
+      const response = await fetch('/api/ga4/fetch-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accessToken,
+          propertyId: selectedProperty.propertyId,
+          startDate: startDateStr,
+          endDate: endDate,
+          metrics: allMetrics
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch GA4 data');
+      }
+
+      const { data: ga4Data } = await response.json();
+      
+      if (!ga4Data || ga4Data.length === 0) {
+        throw new Error('No data returned from GA4 for the selected date range');
+      }
 
       let added = 0;
       let updated = 0;
 
-      for (let i = 0; i < totalDays; i++) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
+      setSyncProgress(prev => ({ 
+        ...prev, 
+        total: ga4Data.length,
+        status: 'Syncing to database...' 
+      }));
 
-        const kpis: Record<string, number> = {};
-        Object.values(selectedMetrics).flat().forEach(m => {
-          // Generate realistic simulation data
-          kpis[m] = Math.floor(Math.random() * 1000) + 100;
-        });
-
+      // Store each day's data in Supabase
+      for (let i = 0; i < ga4Data.length; i++) {
         const record = {
           tenant_id: tenantId,
           site_id: siteId || 'main',
           source: 'ga4',
-          source_id: selectedProperty.id,
-          kpi_date: dateStr,
-          kpis
+          source_id: selectedProperty.propertyId,
+          kpi_date: ga4Data[i].kpi_date,
+          kpis: ga4Data[i].kpis
         };
 
         const { data: existing } = await supabase
           .from('kpi_daily_facts')
           .select('id')
           .eq('tenant_id', tenantId)
-          .eq('kpi_date', dateStr)
+          .eq('site_id', record.site_id)
+          .eq('source', 'ga4')
+          .eq('kpi_date', record.kpi_date)
           .maybeSingle();
 
-        await supabase.from('kpi_daily_facts').upsert(record);
+        const { error: upsertError } = await supabase
+          .from('kpi_daily_facts')
+          .upsert(record);
         
-        if (existing) updated++; else added++;
-
-        if (i % 5 === 0 || i === totalDays - 1) {
-          setSyncProgress(p => ({ 
-            ...p, 
-            current: i + 1, 
-            status: `Ingesting protocol packets... (${i + 1}/${totalDays} days)` 
-          }));
+        if (upsertError) {
+          console.error('Error upserting record:', upsertError);
         }
-        await new Promise(r => setTimeout(r, 50));
+        
+        if (existing) {
+          updated++;
+        } else {
+          added++;
+        }
+
+        // Update progress
+        if (i % 5 === 0 || i === ga4Data.length - 1) {
+          setSyncProgress({ 
+            current: i + 1, 
+            total: ga4Data.length,
+            status: `Syncing... (${i + 1}/${ga4Data.length} days)` 
+          });
+        }
+
+        // Small delay to show progress
+        await new Promise(r => setTimeout(r, 30));
       }
 
+      // Save GA4 settings to Supabase
       await databaseService.saveGA4Settings({
-        property_id: selectedProperty.id,
-        property_name: selectedProperty.name,
-        account_id: selectedProperty.id,
-        account_name: selectedProperty.account,
+        property_id: selectedProperty.propertyId,
+        property_name: selectedProperty.propertyName,
+        account_id: selectedProperty.accountId || selectedProperty.propertyId,
+        account_name: selectedProperty.accountName || 'Unknown',
         selected_metrics: selectedMetrics,
         sync_schedule: 'Daily at 12:00 AM'
       });
 
       setSyncSummary({ added, updated });
       setStep('summary');
-    } catch (err) {
+    } catch (err: any) {
+      console.error('Sync error:', err);
+      setError(err.message || 'Sync failed. Please try again.');
+      alert(`Sync failed: ${err.message}`);
       setStep('sync_config');
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredProps = mockProperties.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    p.id.includes(searchTerm)
+  const filteredProps = properties.filter(p => 
+    p.propertyName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    p.propertyId?.includes(searchTerm)
   );
 
   const totalSelected = Object.values(selectedMetrics).flat().length;
@@ -223,6 +390,19 @@ export const GA4DirectConnector: React.FC<Props> = ({ onComplete, onCancel }) =>
           </button>
         </div>
 
+        {/* Error Display */}
+        {error && (
+          <div className="mx-8 mt-8 p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-rose-400">{error}</p>
+            </div>
+            <button onClick={() => setError('')} className="text-rose-400 hover:text-rose-300">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         <div className="flex-1 p-12 min-h-[500px]">
           {step === 'auth' && (
             <div className="max-w-md mx-auto text-center space-y-10 animate-in fade-in duration-500 py-10">
@@ -236,8 +416,20 @@ export const GA4DirectConnector: React.FC<Props> = ({ onComplete, onCancel }) =>
                   Establish a secure bidirectional tunnel to retrieve industry-standard telemetry directly from Google Cloud nodes.
                 </p>
               </div>
-              <button onClick={handleAuth} className="w-full py-6 bg-white text-slate-900 rounded-[2rem] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-4 hover:bg-blue-50 transition-all shadow-2xl">
-                <LogIn className="w-5 h-5" /> Sign In with Google Protocol
+              <button 
+                onClick={handleAuth} 
+                disabled={loading}
+                className="w-full py-6 bg-white text-slate-900 rounded-[2rem] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-4 hover:bg-blue-50 transition-all shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" /> Connecting...
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="w-5 h-5" /> Sign In with Google Protocol
+                  </>
+                )}
               </button>
               <div className="grid grid-cols-2 gap-4 text-[8px] font-black text-slate-600 uppercase tracking-widest">
                 <span className="flex items-center gap-2 justify-center"><CheckCircle className="w-3 h-3 text-emerald-500" /> Real-time Ingestion</span>
@@ -250,38 +442,77 @@ export const GA4DirectConnector: React.FC<Props> = ({ onComplete, onCancel }) =>
             <div className="space-y-8 animate-in slide-in-from-right duration-500">
               <div className="space-y-2">
                 <h3 className="text-2xl font-black text-white uppercase tracking-tight">Identify Strategic Property</h3>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Connected as: <span className="text-blue-400">admin@acme.com</span></p>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                  Connected as: <span className="text-blue-400">{userEmail || 'Loading...'}</span>
+                </p>
               </div>
-              <div className="relative group">
-                <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600 group-focus-within:text-blue-400 transition-colors" />
-                <input 
-                  className="w-full pl-16 pr-6 py-5 bg-slate-900 border-2 border-slate-800 rounded-3xl text-white font-bold outline-none focus:border-blue-500 transition-all shadow-inner"
-                  placeholder="Filter by Property Name or ID..."
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <div className="max-h-[300px] overflow-y-auto pr-4 space-y-4 scrollbar-hide">
-                {filteredProps.map(p => (
+              
+              {isLoadingProperties ? (
+                <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                  <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+                  <span className="text-slate-400 font-medium">Fetching your GA4 properties...</span>
+                </div>
+              ) : properties.length === 0 ? (
+                <div className="text-center py-20 space-y-4">
+                  <div className="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto">
+                    <AlertTriangle className="w-8 h-8 text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-white text-lg">No Properties Found</p>
+                    <p className="text-sm text-slate-400 mt-2">Make sure you have access to at least one GA4 property</p>
+                  </div>
                   <button 
-                    key={p.id}
-                    onClick={() => setSelectedProperty(p)}
-                    className={`w-full p-6 rounded-[2rem] border-2 text-left transition-all group ${
-                      selectedProperty?.id === p.id 
-                      ? 'bg-blue-600 border-blue-500 text-white shadow-xl' 
-                      : 'bg-slate-900 border-white/5 text-slate-400 hover:border-blue-500/50'
-                    }`}
+                    onClick={fetchRealProperties}
+                    className="mt-4 px-6 py-3 bg-blue-500 text-white rounded-xl font-bold text-sm hover:bg-blue-400 transition-all flex items-center gap-2 mx-auto"
                   >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className={`font-black text-lg tracking-tight ${selectedProperty?.id === p.id ? 'text-white' : 'text-white group-hover:text-blue-400'}`}>{p.name}</p>
-                        <p className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${selectedProperty?.id === p.id ? 'text-blue-200' : 'text-slate-600'}`}>ID: {p.id} • {p.account}</p>
-                      </div>
-                      {selectedProperty?.id === p.id && <CheckCircle className="w-6 h-6 text-white" />}
-                    </div>
+                    <RefreshCw className="w-4 h-4" /> Try Again
                   </button>
-                ))}
-              </div>
+                </div>
+              ) : (
+                <>
+                  <div className="relative group">
+                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600 group-focus-within:text-blue-400 transition-colors" />
+                    <input 
+                      className="w-full pl-16 pr-6 py-5 bg-slate-900 border-2 border-slate-800 rounded-3xl text-white font-bold outline-none focus:border-blue-500 transition-all shadow-inner"
+                      placeholder="Filter by Property Name or ID..."
+                      value={searchTerm}
+                      onChange={e => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <div className="max-h-[300px] overflow-y-auto pr-4 space-y-4 scrollbar-hide">
+                    {filteredProps.length === 0 ? (
+                      <div className="text-center py-10 text-slate-500">
+                        <p className="font-bold">No properties match your search</p>
+                      </div>
+                    ) : (
+                      filteredProps.map(p => (
+                        <button 
+                          key={p.propertyId}
+                          onClick={() => setSelectedProperty(p)}
+                          className={`w-full p-6 rounded-[2rem] border-2 text-left transition-all group ${
+                            selectedProperty?.propertyId === p.propertyId 
+                            ? 'bg-blue-600 border-blue-500 text-white shadow-xl' 
+                            : 'bg-slate-900 border-white/5 text-slate-400 hover:border-blue-500/50'
+                          }`}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className={`font-black text-lg tracking-tight ${selectedProperty?.propertyId === p.propertyId ? 'text-white' : 'text-white group-hover:text-blue-400'}`}>
+                                {p.propertyName}
+                              </p>
+                              <p className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${selectedProperty?.propertyId === p.propertyId ? 'text-blue-200' : 'text-slate-600'}`}>
+                                ID: {p.propertyId} • {p.accountName}
+                              </p>
+                            </div>
+                            {selectedProperty?.propertyId === p.propertyId && <CheckCircle className="w-6 h-6 text-white" />}
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
+              
               <div className="flex gap-4 pt-4">
                 <button onClick={() => setStep('auth')} className="px-8 py-5 bg-slate-800 text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:text-white border border-white/5">Back</button>
                 <button 
@@ -300,7 +531,7 @@ export const GA4DirectConnector: React.FC<Props> = ({ onComplete, onCancel }) =>
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-2xl font-black text-white uppercase tracking-tight">Metric Mapping</h3>
-                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Property: <span className="text-blue-400">{selectedProperty.name}</span></p>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Property: <span className="text-blue-400">{selectedProperty.propertyName}</span></p>
                 </div>
                 <div className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${totalSelected > 10 ? 'bg-rose-500/10 text-rose-400' : 'bg-blue-500/10 text-blue-400'}`}>
                    {totalSelected} Metrics Defined
@@ -380,6 +611,15 @@ export const GA4DirectConnector: React.FC<Props> = ({ onComplete, onCancel }) =>
                        />
                     </div>
                     <div className="space-y-2">
+                       <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Site ID (Optional)</label>
+                       <input 
+                         className="w-full px-6 py-4 bg-slate-900 border-2 border-slate-800 rounded-2xl text-white font-bold outline-none focus:border-blue-500 transition-all"
+                         placeholder="e.g. main, app, web"
+                         value={siteId}
+                         onChange={e => setSiteId(e.target.value)}
+                       />
+                    </div>
+                    <div className="space-y-2">
                        <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Historical Range</label>
                        <div className="grid grid-cols-3 gap-2">
                           {[7, 30, 90].map(d => (
@@ -395,7 +635,7 @@ export const GA4DirectConnector: React.FC<Props> = ({ onComplete, onCancel }) =>
                         <h4 className="text-sm font-black text-white uppercase tracking-widest">Protocol Summary</h4>
                      </div>
                      <div className="space-y-3">
-                        <p className="text-[10px] font-bold text-slate-500 uppercase flex justify-between">Property: <span className="text-white">{selectedProperty.name}</span></p>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase flex justify-between">Property: <span className="text-white">{selectedProperty.propertyName}</span></p>
                         <p className="text-[10px] font-bold text-slate-500 uppercase flex justify-between">Active Metrics: <span className="text-blue-400">{totalSelected} Channels</span></p>
                         <p className="text-[10px] font-bold text-slate-500 uppercase flex justify-between">Temporal Scale: <span className="text-white">{dateRange} Day History</span></p>
                         <p className="text-[10px] font-bold text-slate-500 uppercase flex justify-between">Schedule: <span className="text-emerald-400 italic">Daily Automated Sync</span></p>
@@ -406,11 +646,19 @@ export const GA4DirectConnector: React.FC<Props> = ({ onComplete, onCancel }) =>
                <div className="flex gap-4 pt-10">
                 <button onClick={() => setStep('metrics')} className="px-8 py-5 bg-slate-800 text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:text-white border border-white/5">Back</button>
                 <button 
-                  disabled={!tenantId}
+                  disabled={!tenantId || loading}
                   onClick={handleStartSync}
-                  className="flex-1 py-6 bg-blue-500 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-blue-500/20 hover:bg-blue-400 transition-all flex items-center justify-center gap-3"
+                  className="flex-1 py-6 bg-blue-500 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-blue-500/20 hover:bg-blue-400 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <RefreshCw className="w-5 h-5" /> Initialize Project Sync
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" /> Syncing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-5 h-5" /> Initialize Project Sync
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -430,12 +678,12 @@ export const GA4DirectConnector: React.FC<Props> = ({ onComplete, onCancel }) =>
                  <div className="space-y-3">
                     <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
                        <span>{syncProgress.status}</span>
-                       <span className="text-blue-400">{Math.round((syncProgress.current / syncProgress.total) * 100)}%</span>
+                       <span className="text-blue-400">{syncProgress.total > 0 ? Math.round((syncProgress.current / syncProgress.total) * 100) : 0}%</span>
                     </div>
                     <div className="h-2 w-full bg-slate-900 rounded-full overflow-hidden border border-white/5">
                        <div 
                          className="h-full bg-blue-500 shadow-[0_0_20px_#3b82f6] transition-all duration-300 ease-out" 
-                         style={{ width: `${(syncProgress.current / syncProgress.total) * 100}%` }}
+                         style={{ width: `${syncProgress.total > 0 ? (syncProgress.current / syncProgress.total) * 100 : 0}%` }}
                        />
                     </div>
                  </div>
@@ -451,7 +699,7 @@ export const GA4DirectConnector: React.FC<Props> = ({ onComplete, onCancel }) =>
                  </div>
                  <h3 className="text-4xl font-black text-white uppercase tracking-tight">Sync Complete</h3>
                  <p className="text-slate-400 font-medium max-w-md mx-auto italic">
-                   Successfully established the strategic grounding bridge for <span className="text-blue-400 font-black">{selectedProperty.name}</span>.
+                   Successfully established the strategic grounding bridge for <span className="text-blue-400 font-black">{selectedProperty.propertyName}</span>.
                  </p>
               </div>
 
