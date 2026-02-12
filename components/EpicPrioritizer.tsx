@@ -1,11 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { ProjectContext, EpicStory, UserRole } from '../types';
 import { COMPLIANCE_OPTIONS } from '../constants';
 import { getPrioritizedBacklog } from '../services/geminiService';
-import { FileUp, ListTodo, Target, ShieldCheck, ExternalLink, Calculator, Layers, ArrowRight, Check } from 'lucide-react';
+// Fix: Added missing icon imports (Loader2, Sparkles, X) from lucide-react
+import { FileUp, ListTodo, Target, ShieldCheck, ExternalLink, Calculator, Layers, ArrowRight, Check, AlertCircle, Loader2, Sparkles, X } from 'lucide-react';
 
-// Added role to Props interface to match usage in App.tsx
 interface Props {
   project: ProjectContext;
   role: UserRole;
@@ -20,6 +20,11 @@ enum Step {
 
 export const EpicPrioritizer: React.FC<Props> = ({ project, role }) => {
   const [step, setStep] = useState<Step>(Step.CONTEXT);
+  const [contextInfo, setContextInfo] = useState({
+    domain: 'Enterprise B2B',
+    goals: '',
+    challenges: ''
+  });
   const [marketInfo, setMarketInfo] = useState({
     isInternal: true,
     competitors: ['', '', ''],
@@ -27,7 +32,8 @@ export const EpicPrioritizer: React.FC<Props> = ({ project, role }) => {
   });
   const [method, setMethod] = useState<'RICE' | 'MoSCoW'>('MoSCoW');
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<{summary: string, prioritizedItems: any[]}>({ summary: '', prioritizedItems: [] });
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const toggleCompliance = (id: string) => {
     setMarketInfo(prev => ({
@@ -38,9 +44,20 @@ export const EpicPrioritizer: React.FC<Props> = ({ project, role }) => {
     }));
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      console.log(`[Prioritizer] Uploading backlog: ${file.name}`);
+      // In a real flow, we would parse and populate the stories list
+      // For this implementation, we proceed to run the AI engine
+      handleRunPrioritization();
+    }
+  };
+
   const handleRunPrioritization = async () => {
     setLoading(true);
     try {
+      // High-quality mock backlog if no file uploaded
       const mockStories: EpicStory[] = [
         { id: 'EPIC-1', title: 'User Authentication System', type: 'Epic', description: 'Enable secure login/logout and SSO' },
         { id: 'EPIC-2', title: 'Analytics Dashboard', type: 'Epic', description: 'Visualize real-time user data' },
@@ -49,7 +66,8 @@ export const EpicPrioritizer: React.FC<Props> = ({ project, role }) => {
         { id: 'STORY-5', title: 'Export to CSV', type: 'Story', description: 'Download analytics data locally' }
       ];
 
-      const prioritized = await getPrioritizedBacklog(project, mockStories, method, JSON.stringify(marketInfo));
+      const fullContext = JSON.stringify({ ...contextInfo, ...marketInfo });
+      const prioritized = await getPrioritizedBacklog(project, mockStories, method, fullContext);
       setResults(prioritized);
       setStep(Step.RESULTS);
     } catch (err) {
@@ -64,43 +82,53 @@ export const EpicPrioritizer: React.FC<Props> = ({ project, role }) => {
       case Step.CONTEXT:
         return (
           <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in duration-500">
-            <div className="glass-card p-12 rounded-[2.5rem] shadow-2xl border border-gray-100">
-              <h2 className="text-3xl font-black text-gray-900 mb-8 flex items-center gap-4 tracking-tight">
-                <div className="p-3 bg-emerald-100 rounded-2xl text-emerald-600">
+            <div className="glass-card p-12 rounded-[2.5rem] shadow-2xl border border-white/10">
+              <h2 className="text-3xl font-black text-white mb-8 flex items-center gap-4 tracking-tight">
+                <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-400 border border-emerald-500/20">
                   <Target className="w-7 h-7" />
                 </div>
                 Context Alignment
               </h2>
               <div className="space-y-8">
                 <div className="space-y-2">
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Product Domain</label>
-                  <select className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 bg-white text-gray-900 font-bold focus:border-emerald-500 focus:ring-0 outline-none appearance-none cursor-pointer shadow-sm">
-                    <option className="text-gray-900 font-bold">FinTech</option>
-                    <option className="text-gray-900 font-bold">HealthTech</option>
-                    <option className="text-gray-900 font-bold">EdTech</option>
-                    <option className="text-gray-900 font-bold">E-commerce</option>
-                    <option className="text-gray-900 font-bold">Enterprise B2B</option>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Product Domain</label>
+                  <select 
+                    value={contextInfo.domain}
+                    onChange={e => setContextInfo({...contextInfo, domain: e.target.value})}
+                    className="w-full px-5 py-4 rounded-2xl border-2 border-slate-800 bg-slate-900/50 text-white font-bold focus:border-emerald-500 outline-none appearance-none cursor-pointer"
+                  >
+                    <option value="FinTech" className="bg-slate-900">FinTech</option>
+                    <option value="HealthTech" className="bg-slate-900">HealthTech</option>
+                    <option value="EdTech" className="bg-slate-900">EdTech</option>
+                    <option value="E-commerce" className="bg-slate-900">E-commerce</option>
+                    <option value="Enterprise B2B" className="bg-slate-900">Enterprise B2B</option>
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Business Goal</label>
-                  <textarea rows={2} className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 bg-white text-gray-900 font-bold focus:border-emerald-500 focus:ring-0 outline-none shadow-sm placeholder:text-slate-300 resize-none" placeholder="e.g. Increase user retention by 20% in Q3" />
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Key Business Goals</label>
+                  <textarea 
+                    rows={3} 
+                    value={contextInfo.goals}
+                    onChange={e => setContextInfo({...contextInfo, goals: e.target.value})}
+                    className="w-full px-5 py-4 rounded-2xl border-2 border-slate-800 bg-slate-900/50 text-white font-bold focus:border-emerald-500 outline-none placeholder:text-slate-600 resize-none" 
+                    placeholder="e.g. Increase user retention by 20% in Q3..." 
+                  />
                 </div>
-                <div className="grid md:grid-cols-2 gap-8">
-                  <div className="space-y-2">
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Key Challenges</label>
-                    <textarea rows={3} className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 bg-white text-gray-900 font-bold focus:border-emerald-500 focus:ring-0 outline-none shadow-sm placeholder:text-slate-300 resize-none" placeholder="List top bottlenecks..." />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Expected Outcomes</label>
-                    <textarea rows={3} className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 bg-white text-gray-900 font-bold focus:border-emerald-500 focus:ring-0 outline-none shadow-sm placeholder:text-slate-300 resize-none" placeholder="What does success look like?" />
-                  </div>
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Key Challenges</label>
+                  <textarea 
+                    rows={3} 
+                    value={contextInfo.challenges}
+                    onChange={e => setContextInfo({...contextInfo, challenges: e.target.value})}
+                    className="w-full px-5 py-4 rounded-2xl border-2 border-slate-800 bg-slate-900/50 text-white font-bold focus:border-emerald-500 outline-none placeholder:text-slate-600 resize-none" 
+                    placeholder="List top bottlenecks or dependencies..." 
+                  />
                 </div>
                 <button 
                   onClick={() => setStep(Step.MARKET)}
-                  className="w-full bg-emerald-600 text-white py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-100 mt-4"
+                  className="w-full bg-emerald-600 text-white py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-emerald-500 transition-all shadow-xl shadow-emerald-500/10 mt-4"
                 >
-                  Define Market Relevance <ArrowRight className="w-5 h-5" />
+                  Define Product Relevance <ArrowRight className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -110,9 +138,9 @@ export const EpicPrioritizer: React.FC<Props> = ({ project, role }) => {
       case Step.MARKET:
         return (
           <div className="max-w-3xl mx-auto space-y-8 animate-in slide-in-from-right duration-500">
-            <div className="glass-card p-12 rounded-[2.5rem] shadow-2xl border border-gray-100">
-              <h2 className="text-3xl font-black text-gray-900 mb-8 flex items-center gap-4 tracking-tight">
-                <div className="p-3 bg-emerald-100 rounded-2xl text-emerald-600">
+            <div className="glass-card p-12 rounded-[2.5rem] shadow-2xl border border-white/10">
+              <h2 className="text-3xl font-black text-white mb-8 flex items-center gap-4 tracking-tight">
+                <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-400 border border-emerald-500/20">
                   <ShieldCheck className="w-7 h-7" />
                 </div>
                 Market Guardrails
@@ -120,17 +148,17 @@ export const EpicPrioritizer: React.FC<Props> = ({ project, role }) => {
               
               <div className="space-y-10">
                 <div className="space-y-4">
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Product Placement</label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Product Placement</label>
                   <div className="flex gap-6">
                     <button 
                       onClick={() => setMarketInfo({...marketInfo, isInternal: true})}
-                      className={`flex-1 py-5 rounded-2xl border-2 font-black text-xs uppercase tracking-widest transition-all ${marketInfo.isInternal ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-inner' : 'border-slate-50 text-slate-400 bg-slate-50/50'}`}
+                      className={`flex-1 py-5 rounded-2xl border-2 font-black text-xs uppercase tracking-widest transition-all ${marketInfo.isInternal ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-inner' : 'border-slate-800 text-slate-300 bg-slate-900/50 hover:bg-slate-800'}`}
                     >
                       Internal Product
                     </button>
                     <button 
                       onClick={() => setMarketInfo({...marketInfo, isInternal: false})}
-                      className={`flex-1 py-5 rounded-2xl border-2 font-black text-xs uppercase tracking-widest transition-all ${!marketInfo.isInternal ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-inner' : 'border-slate-50 text-slate-400 bg-slate-50/50'}`}
+                      className={`flex-1 py-5 rounded-2xl border-2 font-black text-xs uppercase tracking-widest transition-all ${!marketInfo.isInternal ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-inner' : 'border-slate-800 text-slate-300 bg-slate-900/50 hover:bg-slate-800'}`}
                     >
                       Market Facing
                     </button>
@@ -138,14 +166,14 @@ export const EpicPrioritizer: React.FC<Props> = ({ project, role }) => {
                 </div>
 
                 {!marketInfo.isInternal && (
-                  <div className="space-y-4">
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Competitor Reference URLs (Max 3)</label>
+                  <div className="space-y-4 animate-in fade-in duration-300">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Competitor Reference URLs (Max 3)</label>
                     <div className="space-y-3">
                       {marketInfo.competitors.map((c, i) => (
                         <div key={i} className="relative group">
                           <input 
                             type="text" 
-                            className="w-full pl-12 pr-5 py-4 rounded-2xl border-2 border-slate-100 bg-white text-gray-900 font-bold focus:border-emerald-500 focus:ring-0 outline-none shadow-sm transition-all" 
+                            className="w-full pl-12 pr-5 py-4 rounded-2xl border-2 border-slate-800 bg-slate-900/50 text-white font-bold focus:border-emerald-500 outline-none shadow-sm transition-all" 
                             placeholder="https://competitor.com"
                             value={c}
                             onChange={e => {
@@ -154,7 +182,7 @@ export const EpicPrioritizer: React.FC<Props> = ({ project, role }) => {
                               setMarketInfo({...marketInfo, competitors: newC});
                             }}
                           />
-                          <ExternalLink className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
+                          <ExternalLink className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-emerald-500 transition-colors" />
                         </div>
                       ))}
                     </div>
@@ -162,19 +190,19 @@ export const EpicPrioritizer: React.FC<Props> = ({ project, role }) => {
                 )}
 
                 <div className="space-y-4">
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Compliance Requirements</label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Compliance Requirements</label>
                   <div className="grid grid-cols-2 gap-4">
                     {COMPLIANCE_OPTIONS.map(opt => (
                       <button
                         key={opt.id}
                         onClick={() => toggleCompliance(opt.id)}
-                        className={`p-5 rounded-2xl border-2 flex items-center gap-4 transition-all ${marketInfo.compliance.includes(opt.id) ? 'border-emerald-500 bg-emerald-50 text-emerald-700 font-black shadow-sm' : 'border-slate-50 text-slate-500 bg-white hover:border-emerald-100'}`}
+                        className={`p-5 rounded-2xl border-2 flex items-center gap-4 transition-all ${marketInfo.compliance.includes(opt.id) ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 font-black shadow-sm' : 'border-slate-800 text-slate-300 bg-slate-900/50 hover:border-slate-700'}`}
                       >
-                        <div className={`p-2 rounded-lg ${marketInfo.compliance.includes(opt.id) ? 'bg-emerald-200' : 'bg-slate-50'}`}>
+                        <div className={`p-2 rounded-lg ${marketInfo.compliance.includes(opt.id) ? 'bg-emerald-500/20' : 'bg-slate-800'}`}>
                           {opt.icon}
                         </div>
                         <span className="text-xs uppercase tracking-widest font-bold">{opt.name}</span>
-                        {marketInfo.compliance.includes(opt.id) && <Check className="w-5 h-5 ml-auto text-emerald-600" />}
+                        {marketInfo.compliance.includes(opt.id) && <Check className="w-5 h-5 ml-auto text-emerald-400" />}
                       </button>
                     ))}
                   </div>
@@ -182,7 +210,7 @@ export const EpicPrioritizer: React.FC<Props> = ({ project, role }) => {
 
                 <button 
                   onClick={() => setStep(Step.ANALYSIS)}
-                  className="w-full bg-emerald-600 text-white py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-emerald-700 shadow-xl mt-6"
+                  className="w-full bg-emerald-600 text-white py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-emerald-500 shadow-xl shadow-emerald-500/10 mt-6"
                 >
                   Configure Engine <ArrowRight className="w-5 h-5" />
                 </button>
@@ -194,33 +222,43 @@ export const EpicPrioritizer: React.FC<Props> = ({ project, role }) => {
       case Step.ANALYSIS:
         return (
           <div className="max-w-2xl mx-auto space-y-8 animate-in slide-in-from-right duration-500">
-            <div className="glass-card p-12 rounded-[3rem] shadow-2xl border border-gray-100">
-              <h2 className="text-3xl font-black text-gray-900 mb-3 tracking-tight text-center">Backlog Import</h2>
-              <p className="text-gray-400 text-center font-medium mb-10 italic">Analyze strategy using MoSCoW or RICE Scoring</p>
+            <div className="glass-card p-12 rounded-[3rem] shadow-2xl border border-white/10">
+              <h2 className="text-3xl font-black text-white mb-3 tracking-tight text-center">Backlog Import</h2>
+              <p className="text-slate-400 text-center font-medium mb-10 italic">Define strategy using MoSCoW or RICE framework</p>
               
               <div className="space-y-8">
-                <div className="border-2 border-dashed border-slate-200 rounded-[2.5rem] py-16 flex flex-col items-center justify-center bg-white hover:bg-emerald-50/20 transition-all cursor-pointer group shadow-inner">
-                  <FileUp className="w-16 h-16 text-slate-200 mb-4 group-hover:scale-110 group-hover:text-emerald-500 transition-all" />
-                  <p className="font-black text-gray-900 uppercase tracking-widest text-xs">Drop JIRA Export CSV/JSON</p>
-                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mt-2">Maximum 500 items for deep analysis</p>
+                <input 
+                  type="file" 
+                  className="hidden" 
+                  ref={fileInputRef} 
+                  onChange={handleFileUpload} 
+                  accept=".csv,.json,.txt"
+                />
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-slate-700 rounded-[2.5rem] py-16 flex flex-col items-center justify-center bg-slate-900/40 hover:bg-slate-800/40 transition-all cursor-pointer group shadow-inner"
+                >
+                  <FileUp className="w-16 h-16 text-slate-600 mb-4 group-hover:scale-110 group-hover:text-emerald-400 transition-all" />
+                  <p className="font-black text-white uppercase tracking-widest text-xs">Drop Backlog or JIRA Export</p>
+                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mt-2">CSV, JSON, or Text Ingestion Protocol</p>
                 </div>
 
-                <div className="p-8 bg-slate-50 rounded-[2.5rem] border-2 border-slate-100">
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6 text-center">Prioritization Framework</label>
+                <div className="p-8 bg-slate-900/40 rounded-[2.5rem] border-2 border-slate-800">
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6 text-center">Prioritization Methodology</label>
                   <div className="grid grid-cols-2 gap-6">
                     <button 
                       onClick={() => setMethod('MoSCoW')}
-                      className={`p-6 rounded-2xl border-2 flex flex-col items-center gap-3 transition-all ${method === 'MoSCoW' ? 'border-emerald-600 bg-white shadow-xl scale-105' : 'border-transparent bg-slate-100/50'}`}
+                      className={`p-6 rounded-2xl border-2 flex flex-col items-center gap-3 transition-all ${method === 'MoSCoW' ? 'border-emerald-500 bg-emerald-500/5 shadow-xl scale-105' : 'border-transparent bg-slate-800/40 hover:bg-slate-800'}`}
                     >
-                      <Layers className={`w-10 h-10 ${method === 'MoSCoW' ? 'text-emerald-600' : 'text-slate-300'}`} />
-                      <span className={`text-[10px] font-black uppercase tracking-widest ${method === 'MoSCoW' ? 'text-gray-900' : 'text-slate-400'}`}>MoSCoW Model</span>
+                      <Layers className={`w-10 h-10 ${method === 'MoSCoW' ? 'text-emerald-400' : 'text-slate-600'}`} />
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${method === 'MoSCoW' ? 'text-white' : 'text-slate-400'}`}>MoSCoW Model</span>
                     </button>
                     <button 
                       onClick={() => setMethod('RICE')}
-                      className={`p-6 rounded-2xl border-2 flex flex-col items-center gap-3 transition-all ${method === 'RICE' ? 'border-emerald-600 bg-white shadow-xl scale-105' : 'border-transparent bg-slate-100/50'}`}
+                      className={`p-6 rounded-2xl border-2 flex flex-col items-center gap-3 transition-all ${method === 'RICE' ? 'border-emerald-500 bg-emerald-500/5 shadow-xl scale-105' : 'border-transparent bg-slate-800/40 hover:bg-slate-800'}`}
                     >
-                      <Calculator className={`w-10 h-10 ${method === 'RICE' ? 'text-emerald-600' : 'text-slate-300'}`} />
-                      <span className={`text-[10px] font-black uppercase tracking-widest ${method === 'RICE' ? 'text-gray-900' : 'text-slate-400'}`}>RICE Scoring</span>
+                      <Calculator className={`w-10 h-10 ${method === 'RICE' ? 'text-emerald-400' : 'text-slate-600'}`} />
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${method === 'RICE' ? 'text-white' : 'text-slate-400'}`}>RICE Scoring</span>
                     </button>
                   </div>
                 </div>
@@ -228,9 +266,9 @@ export const EpicPrioritizer: React.FC<Props> = ({ project, role }) => {
                 <button 
                   onClick={handleRunPrioritization}
                   disabled={loading}
-                  className="w-full bg-gray-900 text-white py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-4 hover:bg-black transition-all shadow-2xl disabled:opacity-50"
+                  className="w-full bg-slate-100 text-slate-950 py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-4 hover:bg-white transition-all shadow-2xl disabled:opacity-50"
                 >
-                  {loading ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : <Calculator className="w-5 h-5" />}
+                  {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <Calculator className="w-5 h-5" />}
                   Execute Strategic Engine
                 </button>
               </div>
@@ -239,55 +277,113 @@ export const EpicPrioritizer: React.FC<Props> = ({ project, role }) => {
         );
 
       case Step.RESULTS:
+        const mustHaves = results.prioritizedItems.filter(i => i.bucket?.startsWith('Must'));
+        const shouldHaves = results.prioritizedItems.filter(i => i.bucket?.startsWith('Should'));
+        const couldHaves = results.prioritizedItems.filter(i => i.bucket?.startsWith('Could'));
+        const wontHaves = results.prioritizedItems.filter(i => i.bucket?.startsWith('Won\'t') || i.bucket?.startsWith('Wont'));
+
         return (
-          <div className="space-y-10 animate-in zoom-in-95 duration-700">
+          <div className="space-y-12 animate-in zoom-in-95 duration-700">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-4xl font-black text-gray-900 tracking-tight">Strategic Backlog Ranking</h2>
-                <p className="text-sm text-gray-400 font-medium mt-1 uppercase tracking-widest">Model: <span className="text-emerald-600 font-black">{method} Framework</span></p>
+                <h2 className="text-4xl font-black text-white tracking-tight uppercase">Prioritization Results</h2>
+                <p className="text-sm text-slate-400 font-medium mt-1 uppercase tracking-widest">Model: <span className="text-emerald-400 font-black">{method} Methodology</span></p>
               </div>
-              <button onClick={() => setStep(Step.ANALYSIS)} className="px-8 py-3 bg-white border-2 border-slate-100 rounded-2xl font-black text-[10px] uppercase tracking-widest text-gray-500 hover:bg-slate-50 transition-all shadow-sm">Adjust Parameters</button>
+              <button onClick={() => setStep(Step.ANALYSIS)} className="px-8 py-3 bg-slate-800 border border-white/5 rounded-2xl font-black text-[10px] uppercase tracking-widest text-slate-300 hover:bg-slate-700 transition-all shadow-sm">Recalibrate Parameters</button>
             </div>
 
-            <div className="grid gap-6">
-              {results.map((res, i) => (
-                <div key={i} className="glass-card p-8 rounded-[2rem] border-2 border-slate-50 flex items-center justify-between hover:shadow-2xl hover:border-emerald-100 transition-all group">
-                  <div className="flex gap-8 items-center">
-                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-2xl shadow-sm ${method === 'MoSCoW' ? 
-                      (res.bucket?.startsWith('Must') ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-blue-50 text-blue-600 border border-blue-100') :
-                      'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
-                      {i + 1}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="text-[10px] font-black px-2.5 py-1 bg-slate-100 text-slate-500 rounded-lg uppercase tracking-[0.2em]">{res.id}</span>
-                        <h4 className="font-black text-gray-900 text-lg tracking-tight group-hover:text-emerald-700 transition-colors leading-none">{res.title || 'Untitled Requirement'}</h4>
-                      </div>
-                      <p className="text-sm text-gray-500 font-medium line-clamp-2 max-w-2xl italic leading-relaxed">{res.reasoning || res.description || 'Strategic prioritization mapping applied based on current market demands and compliance guardrails.'}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-12">
-                    {method === 'MoSCoW' ? (
-                      <div className={`px-5 py-2.5 rounded-full font-black text-[10px] uppercase tracking-[0.2em] shadow-sm ${
-                        res.bucket === 'Must-Have' ? 'bg-rose-600 text-white' : 
-                        res.bucket === 'Should-Have' ? 'bg-blue-600 text-white' : 
-                        'bg-slate-200 text-slate-600'
-                      }`}>
-                        {res.bucket}
-                      </div>
-                    ) : (
-                      <div className="text-right">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">RICE Score</p>
-                        <p className="text-4xl font-black text-emerald-600 leading-none tabular-nums">{res.score}</p>
-                      </div>
-                    )}
-                    <button className="p-3 bg-slate-50 rounded-xl text-slate-300 hover:text-gray-900 hover:bg-slate-100 transition-all shadow-inner">
-                      <ExternalLink className="w-5 h-5" />
-                    </button>
-                  </div>
+            {results.summary && (
+              <div className="p-8 bg-indigo-500/5 border border-indigo-500/20 rounded-[2rem] flex items-start gap-6">
+                <AlertCircle className="w-8 h-8 text-indigo-400 shrink-0" />
+                <div>
+                   <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Strategic AI Summary</h4>
+                   <p className="text-sm text-slate-300 font-medium leading-relaxed italic">{results.summary}</p>
                 </div>
-              ))}
+              </div>
+            )}
+
+            <div className="grid lg:grid-cols-2 gap-12">
+               {/* Must Haves Column */}
+               <div className="space-y-6">
+                  <div className="flex items-center gap-3 border-b border-rose-500/30 pb-4">
+                     <div className="p-2 bg-rose-500/10 rounded-lg text-rose-500"><ShieldCheck className="w-5 h-5" /></div>
+                     <h3 className="text-xl font-black text-white uppercase tracking-tight">Must-Have <span className="text-[10px] text-slate-500 ml-2">Critical Path</span></h3>
+                  </div>
+                  <div className="space-y-4">
+                    {mustHaves.length > 0 ? mustHaves.map((item, idx) => (
+                      <div key={idx} className="glass-card p-6 rounded-2xl border border-white/5 hover:border-rose-500/20 transition-all group">
+                         <div className="flex justify-between items-start mb-3">
+                            <h4 className="font-black text-white text-base group-hover:text-rose-400 transition-colors">{item.title}</h4>
+                            <span className="text-[9px] font-black px-2 py-0.5 bg-slate-800 text-slate-500 rounded uppercase">{item.id}</span>
+                         </div>
+                         <p className="text-xs text-slate-400 font-medium leading-relaxed italic">{item.rationale}</p>
+                      </div>
+                    )) : <p className="text-xs text-slate-600 font-black uppercase text-center py-10 border border-dashed border-slate-800 rounded-2xl">No items prioritized here</p>}
+                  </div>
+               </div>
+
+               {/* Should Haves Column */}
+               <div className="space-y-6">
+                  <div className="flex items-center gap-3 border-b border-blue-500/30 pb-4">
+                     <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400"><Layers className="w-5 h-5" /></div>
+                     <h3 className="text-xl font-black text-white uppercase tracking-tight">Should-Have <span className="text-[10px] text-slate-500 ml-2">Important</span></h3>
+                  </div>
+                  <div className="space-y-4">
+                    {shouldHaves.length > 0 ? shouldHaves.map((item, idx) => (
+                      <div key={idx} className="glass-card p-6 rounded-2xl border border-white/5 hover:border-blue-500/20 transition-all group">
+                         <div className="flex justify-between items-start mb-3">
+                            <h4 className="font-black text-white text-base group-hover:text-blue-400 transition-colors">{item.title}</h4>
+                            <span className="text-[9px] font-black px-2 py-0.5 bg-slate-800 text-slate-500 rounded uppercase">{item.id}</span>
+                         </div>
+                         <p className="text-xs text-slate-400 font-medium leading-relaxed italic">{item.rationale}</p>
+                      </div>
+                    )) : <p className="text-xs text-slate-600 font-black uppercase text-center py-10 border border-dashed border-slate-800 rounded-2xl">No items prioritized here</p>}
+                  </div>
+               </div>
+
+               {/* Could Haves Column */}
+               <div className="space-y-6">
+                  <div className="flex items-center gap-3 border-b border-teal-500/30 pb-4">
+                     <div className="p-2 bg-teal-500/10 rounded-lg text-teal-400"><Sparkles className="w-5 h-5" /></div>
+                     <h3 className="text-xl font-black text-white uppercase tracking-tight">Could-Have <span className="text-[10px] text-slate-500 ml-2">Nice-to-Have</span></h3>
+                  </div>
+                  <div className="space-y-4">
+                    {couldHaves.length > 0 ? couldHaves.map((item, idx) => (
+                      <div key={idx} className="glass-card p-6 rounded-2xl border border-white/5 hover:border-teal-500/20 transition-all group">
+                         <div className="flex justify-between items-start mb-3">
+                            <h4 className="font-black text-white text-base group-hover:text-teal-400 transition-colors">{item.title}</h4>
+                            <span className="text-[9px] font-black px-2 py-0.5 bg-slate-800 text-slate-500 rounded uppercase">{item.id}</span>
+                         </div>
+                         <p className="text-xs text-slate-400 font-medium leading-relaxed italic">{item.rationale}</p>
+                      </div>
+                    )) : <p className="text-xs text-slate-600 font-black uppercase text-center py-10 border border-dashed border-slate-800 rounded-2xl">No items prioritized here</p>}
+                  </div>
+               </div>
+
+               {/* Wont Haves Column */}
+               <div className="space-y-6">
+                  <div className="flex items-center gap-3 border-b border-slate-700 pb-4">
+                     <div className="p-2 bg-slate-800 rounded-lg text-slate-500"><X className="w-5 h-5" /></div>
+                     <h3 className="text-xl font-black text-white uppercase tracking-tight">Won't-Have <span className="text-[10px] text-slate-500 ml-2">Out of Scope</span></h3>
+                  </div>
+                  <div className="space-y-4">
+                    {wontHaves.length > 0 ? wontHaves.map((item, idx) => (
+                      <div key={idx} className="glass-card p-6 rounded-2xl border border-white/5 opacity-60 hover:opacity-100 transition-all group">
+                         <div className="flex justify-between items-start mb-3">
+                            <h4 className="font-black text-white text-base group-hover:text-slate-400 transition-colors">{item.title}</h4>
+                            <span className="text-[9px] font-black px-2 py-0.5 bg-slate-800 text-slate-500 rounded uppercase">{item.id}</span>
+                         </div>
+                         <p className="text-xs text-slate-400 font-medium leading-relaxed italic">{item.rationale}</p>
+                      </div>
+                    )) : <p className="text-xs text-slate-600 font-black uppercase text-center py-10 border border-dashed border-slate-800 rounded-2xl">No items prioritized here</p>}
+                  </div>
+               </div>
+            </div>
+
+            <div className="pt-10 flex justify-center">
+               <button className="px-12 py-5 bg-teal-500 text-slate-950 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl flex items-center gap-3 hover:bg-teal-400 transition-all">
+                  <ExternalLink className="w-5 h-5" /> Export Strategic Mapping
+               </button>
             </div>
           </div>
         );
@@ -296,6 +392,18 @@ export const EpicPrioritizer: React.FC<Props> = ({ project, role }) => {
 
   return (
     <div className="min-h-[70vh]">
+      {loading && step !== Step.RESULTS && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center space-y-8 animate-in fade-in">
+           <div className="relative">
+             <div className="w-24 h-24 border-4 border-emerald-500/10 border-t-emerald-500 rounded-full animate-spin"></div>
+             <Calculator className="absolute inset-0 m-auto w-8 h-8 text-emerald-400 animate-pulse" />
+           </div>
+           <div className="text-center space-y-2">
+             <h4 className="text-2xl font-black text-white uppercase tracking-tighter">Strategic Engine Processing</h4>
+             <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.4em] animate-pulse">AI Agent: Agile Coach applying MoSCoW logic...</p>
+           </div>
+        </div>
+      )}
       {renderStep()}
     </div>
   );

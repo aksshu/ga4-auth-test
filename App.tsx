@@ -8,13 +8,11 @@ import { SEOAnalyzer } from './components/SEOAnalyzer';
 import { GA4Analytics } from './components/GA4Analytics';
 import { EpicPrioritizer } from './components/EpicPrioritizer';
 import { SentimentAnalyzer } from './components/SentimentAnalyzer';
-import { ReleaseReporting } from './components/ReleaseReporting';
 import { Auth } from './components/Auth';
 import { ProjectSelector } from './components/ProjectSelector';
-import { ChevronLeft, LogOut, MessageSquare, FileText, Sparkles, ArrowRight, RefreshCw, AlertCircle, ShieldAlert, Plus, FolderPlus, HelpCircle } from 'lucide-react';
+import { ChevronLeft, LogOut, Sparkles, ArrowRight, RefreshCw, ShieldAlert, HelpCircle } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { databaseService } from './services/databaseService';
-import {  OAuthSuccess } from './components/ga4';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<any>(null);
@@ -30,7 +28,6 @@ const App: React.FC = () => {
   const [ga4Status, setGa4Status] = useState<'active' | 'offline' | 'searching'>('offline');
   const [isDemoMode, setIsDemoMode] = useState(false);
 
-  // Initial Auth Check and Listener
   useEffect(() => {
     let isInitialized = false;
 
@@ -39,15 +36,12 @@ const App: React.FC = () => {
       isInitialized = true;
 
       try {
-        console.log('[Auth] Checking current session...');
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
-          console.log('[Auth] Session detected:', session.user.email);
           setUser(session.user);
           await fetchProjects();
         } else {
-          console.log('[Auth] No active session.');
           setLoading(false);
         }
       } catch (err) {
@@ -56,15 +50,11 @@ const App: React.FC = () => {
       }
     };
 
-    // Trigger initialization
     initialize();
 
-    // Setup listener for changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log(`[Auth Event] ${event}`);
       if (session?.user) {
         setUser(session.user);
-        // If we transition to logged in, fetch data
         if (event === 'SIGNED_IN') {
            await fetchProjects();
         }
@@ -77,7 +67,6 @@ const App: React.FC = () => {
       }
     });
 
-    // Safety timeout for the loading screen (Show bypass after 4s, force clear after 10s)
     const bypassTimer = setTimeout(() => setShowBypass(true), 4000);
     const forceClearTimer = setTimeout(() => setLoading(false), 12000);
 
@@ -89,12 +78,10 @@ const App: React.FC = () => {
   }, []);
 
   const fetchProjects = async () => {
-    console.log('[DB] Synchronizing workspaces...');
     setFetchError(null);
     try {
       const data = await databaseService.getWorkspaces();
       if (!data || data.length === 0) {
-        // Check for local demo fallback
         const cached = localStorage.getItem('productpulse_sim_data');
         if (cached) {
           setProjects(JSON.parse(cached));
@@ -106,11 +93,8 @@ const App: React.FC = () => {
         setProjects(data);
         setIsDemoMode(false);
       }
-      console.log(`[DB] Synchronized ${data?.length || 0} workspaces.`);
     } catch (err: any) {
-      console.error('[DB] Fetch projects error:', err);
       setFetchError(err.message || "Failed to synchronize with strategic vault.");
-      
       const fallback = localStorage.getItem('productpulse_fallback_workspaces');
       if (fallback) {
         setProjects(JSON.parse(fallback));
@@ -179,9 +163,6 @@ const App: React.FC = () => {
       setShowSetup(false);
       setIsDemoMode(false);
     } catch (err) {
-      console.error('[DB] Error creating project:', err);
-      alert('Vault synchronization failed. Module saved locally.');
-      // Local fallback for local-only environments
       const localProject = { ...newProject, id: `local-${Date.now()}` } as ProjectContext;
       setProjects(prev => [localProject, ...prev]);
       setActiveProject(localProject);
@@ -212,7 +193,6 @@ const App: React.FC = () => {
     return tool?.title;
   };
 
-  // 1. Loading State (Resilient Full Screen)
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#0F172A] p-6 text-center">
@@ -221,23 +201,18 @@ const App: React.FC = () => {
             <div className="w-16 h-16 border-4 border-teal-500/20 border-t-teal-500 rounded-full animate-spin"></div>
             <Sparkles className="absolute inset-0 m-auto w-6 h-6 text-teal-400 animate-pulse" />
           </div>
-          
           <div className="space-y-2">
             <p className="text-[10px] font-black text-teal-400 uppercase tracking-[0.4em] animate-pulse italic">
               Synchronizing Vault Access...
             </p>
-            <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">
-              Connecting to Secure Protocol Node
-            </p>
           </div>
-
           {showBypass && (
             <div className="mt-12 animate-in fade-in slide-in-from-bottom-2 duration-700">
               <button
                 onClick={() => setLoading(false)}
                 className="flex items-center gap-2 text-[9px] font-black text-slate-500 hover:text-teal-400 transition-all uppercase tracking-widest border border-white/5 bg-white/5 px-6 py-3 rounded-2xl"
               >
-                <HelpCircle className="w-3.5 h-3.5" /> Taking too long? Force Workspace Entry
+                <HelpCircle className="w-3.5 h-3.5" /> Force Workspace Entry
               </button>
             </div>
           )}
@@ -246,12 +221,10 @@ const App: React.FC = () => {
     );
   }
 
-  // 2. Unauthenticated View
   if (!user) {
     return <Auth onRoleSelect={handleRoleSelection} />;
   }
 
-  // 3. Authenticated View (Wrapped in Layout)
   const renderDashboardContent = () => {
     if (showSetup) {
       return (
@@ -282,7 +255,6 @@ const App: React.FC = () => {
               </div>
             </div>
           )}
-
           {fetchError && (
             <div className="max-w-5xl mx-auto px-4 mt-8">
               <div className="p-10 glass-card border-2 border-rose-500/30 rounded-[3rem] flex flex-col gap-8 shadow-2xl">
@@ -290,7 +262,7 @@ const App: React.FC = () => {
                   <div className="p-5 bg-rose-500 rounded-[1.5rem] text-white shadow-2xl shrink-0"><ShieldAlert className="w-10 h-10" /></div>
                   <div className="space-y-2">
                     <h4 className="text-2xl font-black text-white uppercase tracking-tighter">Connectivity Interruption</h4>
-                    <p className="text-sm text-slate-400 font-medium">Cloud sync failure. Using cached local storage. Any new projects created will be local-only until cloud sync restores.</p>
+                    <p className="text-sm text-slate-400 font-medium">Cloud sync failure. Using cached local storage.</p>
                   </div>
                 </div>
                 <button onClick={fetchProjects} className="w-full py-4 bg-teal-500 text-slate-900 rounded-[1.5rem] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3">
@@ -299,7 +271,6 @@ const App: React.FC = () => {
               </div>
             </div>
           )}
-
           <ProjectSelector 
             projects={projects} 
             role={userRole}
@@ -325,12 +296,7 @@ const App: React.FC = () => {
             <p className="text-xl text-slate-400 max-w-2xl mx-auto font-medium leading-relaxed italic">
               Active Module: <span className="text-teal-400 font-black px-3 py-1 bg-teal-500/10 rounded-xl border border-teal-500/20">{activeProject.name}</span>
             </p>
-            <div className="px-5 py-2 bg-slate-900 border border-white/10 rounded-full flex items-center gap-3">
-              <span className={`w-2 h-2 rounded-full ${userRole === UserRole.EDITOR ? 'bg-teal-500 shadow-[0_0_10px_#2dd4bf]' : 'bg-amber-500 shadow-[0_0_10px_#f59e0b]'}`} />
-              <span className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em]">{userRole} Protocol Engaged</span>
-            </div>
           </div>
-
           <div className="grid lg:grid-cols-2 gap-10 max-w-6xl mx-auto px-4 pb-20">
             {TOOL_CARDS.map(tool => (
               <button
@@ -385,7 +351,6 @@ const App: React.FC = () => {
             </button>
           </div>
         </div>
-        
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
           {activeTool === ToolType.SEO_Lighthouse && <SEOAnalyzer role={userRole} />}
           {activeTool === ToolType.GA4_KPI && (
@@ -397,10 +362,7 @@ const App: React.FC = () => {
             />
           )}
           {activeTool === ToolType.EPIC_PRIORITY && <EpicPrioritizer project={activeProject} role={userRole} />}
-          
           {activeTool === ToolType.SENTIMENT_ANALYSIS && <SentimentAnalyzer role={userRole} />}
-          
-          {activeTool === ToolType.RELEASE_REPORTING && <ReleaseReporting role={userRole} />}
         </div>
       </div>
     );

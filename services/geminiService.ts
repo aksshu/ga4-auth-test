@@ -19,9 +19,6 @@ const safeParse = (text: string | undefined, context: string) => {
   }
 };
 
-/**
- * Auto-detects potential review sources for a given URL.
- */
 export const detectReviewSources = async (url: string): Promise<ReviewSource[]> => {
   try {
     const ai = getAIClient();
@@ -51,9 +48,6 @@ export const detectReviewSources = async (url: string): Promise<ReviewSource[]> 
   }
 };
 
-/**
- * Perform a full Sentiment & UX Audit via Gemini with validation data.
- */
 export const performSentimentAudit = async (url: string, sources: ReviewSource[], rawData?: string): Promise<SentimentAudit> => {
   try {
     const ai = getAIClient();
@@ -107,9 +101,6 @@ export const performSentimentAudit = async (url: string, sources: ReviewSource[]
   }
 };
 
-/**
- * Translates Natural Language queries into a structured ChartConfig.
- */
 export const getChartConfigFromNL = async (query: string, availableMetrics: string[]): Promise<ChartConfig> => {
   try {
     const ai = getAIClient();
@@ -217,13 +208,44 @@ export const generateLighthouseReport = async (urls: string[]): Promise<Lighthou
 export const getPrioritizedBacklog = async (project: ProjectContext, stories: EpicStory[], method: string, marketContext: string) => {
   try {
     const ai = getAIClient();
+    const prompt = `You are a world-class Agile Coach. Your task is to prioritize a product backlog for the project: "${project.name}" (${project.description}).
+    
+    METHODOLOGY: ${method === 'MoSCoW' ? 'MoSCoW (Must, Should, Could, Won\'t)' : 'RICE Scoring'}
+    MARKET CONTEXT: ${marketContext}
+    BACKLOG: ${JSON.stringify(stories)}
+
+    IF METHOD IS MoSCoW:
+    - Must: Critical, project fails without it.
+    - Should: Important but not launch-blocking.
+    - Could: Nice-to-have if time permits.
+    - Won't: Explicitly out of scope for this version.
+
+    RETURN JSON:
+    {
+      "summary": "Brief summary of prioritization strategy",
+      "methodology": "Explanation of methodology used",
+      "prioritizedItems": [
+        {
+          "id": "item unique ID",
+          "title": "item title",
+          "bucket": "Must-Have | Should-Have | Could-Have | Won't-Have",
+          "score": number (if RICE),
+          "rationale": "strategic reasoning for this placement",
+          "epicTitle": "Optional parent epic"
+        }
+      ]
+    }`;
+
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Prioritize backlog using ${method} for "${project.name}". Market: ${marketContext}. Stories: ${JSON.stringify(stories)}`,
+      contents: prompt,
       config: { responseMimeType: "application/json" }
     });
-    return safeParse(response.text, "Backlog Prioritization") || [];
-  } catch (err) { return []; }
+    return safeParse(response.text, "Backlog Prioritization") || { summary: '', prioritizedItems: [] };
+  } catch (err) { 
+    console.error("[Gemini Service] Prioritization failure:", err);
+    return { summary: 'Error in prioritization stream.', prioritizedItems: [] }; 
+  }
 };
 
 export const discoverGA4Tags = async (project: ProjectContext, propertyId: string) => {

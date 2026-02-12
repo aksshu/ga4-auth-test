@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Search, BarChart3, ListTodo, Globe, Briefcase, HeartPulse, ShoppingCart, ShieldCheck, Scale, Lock, Info, MessageSquare, FileText } from 'lucide-react';
+import { Search, BarChart3, ListTodo, Globe, Briefcase, HeartPulse, ShoppingCart, ShieldCheck, Scale, Lock, Info, MessageSquare } from 'lucide-react';
 
 export const DOMAIN_TYPES = [
   { id: 'sales', name: 'Sales', description: 'Revenue generation, pipeline management, customer acquisition', icon: <Briefcase className="w-5 h-5" /> },
@@ -37,13 +37,6 @@ export const TOOL_CARDS = [
     description: 'Harness AI to analyze customer feedback and gauage product reception.',
     icon: <MessageSquare className="w-8 h-8 text-rose-600" />,
     color: 'border-rose-200 hover:border-rose-400'
-  },
-  {
-    id: 'RELEASE_REPORTING',
-    title: 'Release Reporting Assistant',
-    description: 'Automate release notes and progress summaries for stakeholders.',
-    icon: <FileText className="w-8 h-8 text-indigo-600" />,
-    color: 'border-indigo-200 hover:border-indigo-400'
   }
 ];
 

@@ -3,8 +3,7 @@ export enum ToolType {
   SEO_Lighthouse = 'SEO_Lighthouse',
   GA4_KPI = 'GA4_KPI',
   EPIC_PRIORITY = 'EPIC_PRIORITY',
-  SENTIMENT_ANALYSIS = 'SENTIMENT_ANALYSIS',
-  RELEASE_REPORTING = 'RELEASE_REPORTING'
+  SENTIMENT_ANALYSIS = 'SENTIMENT_ANALYSIS'
 }
 
 export enum UserRole {
@@ -61,40 +60,6 @@ export interface KPIFact {
   source?: string;
   source_id?: string;
   kpis: Record<string, number>;
-}
-
-export interface GA4MetricSelection {
-  user_metrics: string[];
-  session_metrics: string[];
-  event_metrics: string[];
-  ecommerce_metrics: string[];
-  page_metrics: string[];
-  traffic_metrics: string[];
-}
-
-export interface GA4Settings {
-  id?: string;
-  user_id: string;
-  property_id: string;
-  property_name: string;
-  account_id: string;
-  account_name: string;
-  selected_metrics: GA4MetricSelection;
-  sync_schedule: string;
-  last_sync?: string;
-  next_sync?: string;
-}
-
-export interface GA4SyncHistory {
-  id?: string;
-  user_id: string;
-  property_id: string;
-  status: 'completed' | 'failed' | 'in_progress';
-  records_synced: number;
-  date_range_start: string;
-  date_range_end: string;
-  error_message?: string;
-  created_at?: string;
 }
 
 export interface CSVUploadLog {
@@ -224,6 +189,7 @@ export interface JiraCustomFieldMapping {
   jira_field_id: string;
 }
 
+// Added ReleaseReport interface to fix missing export member error in databaseService.ts and ReleaseReporting.tsx
 export interface ReleaseReport {
   id?: string;
   user_id?: string;
@@ -239,8 +205,8 @@ export interface ReleaseReport {
   sanity_status: string;
   document_url: string;
   document_format: string;
+  report_data: any;
   created_at?: string;
-  report_data?: any;
 }
 
 export type KPI = KPIDictionary & { selected?: boolean };

@@ -1,53 +1,39 @@
+
 export default async function handler(req: any, res: any) {
+  const code = req.query.code;
+  if (!code) return res.status(400).json({ error: 'No code provided' });
+  
   try {
-    if (req.method !== 'GET') {
-      return res.status(405).json({ error: 'Method not allowed' });
-    }
-
-    const code = req.query.code;
-
-    if (!code) {
-      return res.status(400).json({ error: 'Missing authorization code' });
-    }
-
-    const tokenUrl = 'https://oauth2.googleapis.com/token';
-
-    const params = new URLSearchParams({
-      code,
-      client_id: process.env.GOOGLE_CLIENT_ID,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: process.env.GOOGLE_REDIRECT_URI,
-      grant_type: 'authorization_code',
-    });
-
-    const tokenResponse = await fetch(tokenUrl, {
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: params,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: process.env.GOOGLE_CLIENT_ID || '',
+        client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+        redirect_uri: process.env.GOOGLE_REDIRECT_URI || '',
+        grant_type: 'authorization_code',
+      }),
     });
-
-    const tokenData = await tokenResponse.json();
-
-    if (!tokenResponse.ok) {
-      return res.status(500).json({
-        error: 'Token exchange failed',
-        details: tokenData,
+    
+    const tokens: any = await tokenResponse.json();
+    if (tokens.error) return res.status(400).json({ error: tokens.error });
+    
+    let userEmail = '';
+    try {
+      const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { 'Authorization': `Bearer ${tokens.access_token}` }
       });
-    }
-
-    // ⭐ IMPORTANT PART — REDIRECT TO FRONTEND
-    const redirectUrl =
-      `${process.env.FRONTEND_URL}/oauth-success` +
-      `?access_token=${tokenData.access_token}` +
-      `&refresh_token=${tokenData.refresh_token || ''}`;
-
-    return res.redirect(redirectUrl);
-
+      const userInfo: any = await userInfoResponse.json();
+      userEmail = userInfo.email;
+    } catch (e) {}
+    
+    return res.status(200).json({
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+      user_email: userEmail
+    });
   } catch (error) {
-    console.error('OAuth callback error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'Auth failed' });
   }
 }
-

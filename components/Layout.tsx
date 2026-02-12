@@ -35,10 +35,10 @@ export const Layout: React.FC<LayoutProps> = ({
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-3 cursor-pointer group" onClick={onNavigateHome}>
               <div className="p-2 bg-teal-500 rounded-lg text-slate-900 shadow-lg shadow-teal-500/20 group-hover:scale-110 transition-transform">
-                <Package2 className="w-6 h-6" />
+                <div className="p-0.5"><Package2 className="w-6 h-6" /></div>
               </div>
               <div>
-                <h1 className="text-xl font-black text-white leading-none tracking-tight">ProductPulse</h1>
+                <h1 className="text-xl font-black text-white leading-none tracking-tight">Product Pulse</h1>
                 <span className="text-[8px] text-teal-400 font-black tracking-[0.2em] uppercase mt-1 block">Strategic Engine</span>
               </div>
             </div>
@@ -148,7 +148,7 @@ export const Layout: React.FC<LayoutProps> = ({
       </main>
       
       <footer className="py-8 border-t border-white/5 bg-slate-900/50 text-center text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">
-        &copy; 2024 ProductPulse &bull; Synthetic Intelligence Framework &bull; Gemini Powered
+        &copy; 2024 Product Pulse &bull; Synthetic Intelligence Framework &bull; Gemini Powered
       </footer>
     </div>
   );

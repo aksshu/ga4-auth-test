@@ -1,11 +1,11 @@
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req, res) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const redirectUri = process.env.GOOGLE_REDIRECT_URI;
   const scope = 'https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/userinfo.email';
   
   if (!clientId || !redirectUri) {
-    return res.status(500).json({ error: 'OAuth not configured' });
+    return res.status(500).json({ error: 'OAuth credentials not configured on strategic cluster' });
   }
   
   const authUrl = 

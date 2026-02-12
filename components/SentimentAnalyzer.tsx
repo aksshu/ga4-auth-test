@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Globe, Search, Loader2, Sparkles, AlertCircle, 
@@ -129,7 +128,25 @@ export const SentimentAnalyzer: React.FC<Props> = ({ role }) => {
         labels: audit.visuals.sentimentTrend.map(t => t.date),
         datasets: [{ label: 'Score', data: audit.visuals.sentimentTrend.map(t => t.score), borderColor: '#6366F1', tension: 0.4, fill: true, backgroundColor: 'rgba(99, 102, 241, 0.1)' }]
       },
-      options: { plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } } } }
+      options: { 
+        plugins: { 
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `Score: ${ctx.raw} (AI Strategic Reconstruction)`
+            }
+          }
+        }, 
+        scales: { 
+          y: { 
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: { color: '#64748B' }
+          },
+          x: {
+            ticks: { color: '#64748B' }
+          }
+        } 
+      }
     });
   };
 
@@ -140,22 +157,26 @@ export const SentimentAnalyzer: React.FC<Props> = ({ role }) => {
   };
 
   const renderMetricCard = (label: string, metric: MetricWithConfidence, colorClass: string) => (
-    <div className="glass-card p-10 rounded-[3rem] border border-white/5 shadow-2xl flex flex-col gap-4 group hover:-translate-y-2 transition-transform">
+    <div className="glass-card p-10 rounded-[3rem] border border-white/5 shadow-2xl flex flex-col gap-4 group hover:-translate-y-2 transition-transform relative">
       <div className="flex justify-between items-start">
         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{label}</p>
-        <div className={`px-2 py-1 rounded-lg bg-slate-900 border border-white/5 flex items-center gap-1.5`}>
-          <span className={`text-[8px] font-black uppercase ${getConfidenceColor(metric.confidence)}`}>Conf: {metric.confidence}%</span>
+        <div 
+          className="px-2 py-1 rounded-lg bg-slate-900 border border-white/5 flex items-center gap-1.5 cursor-help"
+          title="Confidence: An AI-derived reliability index based on data density and source variety."
+        >
+          <span className={`text-[8px] font-black uppercase ${getConfidenceColor(metric.confidence)}`}>CONF: {metric.confidence}%</span>
+          <Info className="w-2.5 h-2.5 text-slate-700" />
         </div>
       </div>
       <div className="flex items-end gap-3">
         <span className={`text-4xl font-black ${colorClass}`}>{metric.value}{label === 'NPS' ? '' : '%'}</span>
-        <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest pb-1.5">{metric.dataPoints} Reviews</span>
+        <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest pb-1.5">{metric.dataPoints.toLocaleString()} Datapoints</span>
       </div>
       <button 
         onClick={() => setActiveTab('verification')}
         className="mt-2 text-[8px] font-black text-slate-500 hover:text-teal-400 uppercase tracking-widest flex items-center gap-1"
       >
-        <Search className="w-2.5 h-2.5" /> View Source Breakdown
+        <Search className="w-2.5 h-2.5" /> View Analysis Traceability
       </button>
     </div>
   );
@@ -266,7 +287,7 @@ export const SentimentAnalyzer: React.FC<Props> = ({ role }) => {
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right mr-4 hidden md:block">
-                      <p className="text-[10px] font-black text-white">{source.count} REVIEWS</p>
+                      <p className="text-[10px] font-black text-white">{source.count.toLocaleString()} REVIEWS</p>
                       <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Available Volume</p>
                     </div>
                     <button onClick={() => setEditingSourceId(source.id)} className="p-3 bg-slate-800 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5"><Edit2 className="w-4 h-4" /></button>
@@ -287,7 +308,7 @@ export const SentimentAnalyzer: React.FC<Props> = ({ role }) => {
                 <ShieldCheck className="w-6 h-6 text-indigo-400" /> Accuracy Calibration
               </h4>
               <p className="text-sm text-slate-400 font-medium max-w-lg mx-auto leading-relaxed">
-                We've detected <span className="text-teal-400 font-black">{sources.reduce((a,b) => a + b.count, 0)} potential reviews</span>. Initializing the audit will perform a deep sentiment scan across all verified nodes.
+                We've detected <span className="text-teal-400 font-black">{sources.reduce((a,b) => a + b.count, 0).toLocaleString()} potential reviews</span>. Initializing the audit will perform a deep sentiment scan across all verified nodes.
               </p>
               <button 
                 onClick={handleRunAudit}
@@ -310,7 +331,6 @@ export const SentimentAnalyzer: React.FC<Props> = ({ role }) => {
               { id: 'assessment', label: 'Report', icon: <FileText className="w-4 h-4" /> },
               { id: 'visual', label: 'Visual Analysis', icon: <PieChart className="w-4 h-4" /> },
               { id: 'action', label: 'Action Plan', icon: <Zap className="w-4 h-4" /> },
-              /* Corrected icon component usage */
               { id: 'verification', label: 'Verification', icon: <ShieldCheck className="w-4 h-4" /> }
             ].map(tab => (
               <button 
@@ -350,7 +370,31 @@ export const SentimentAnalyzer: React.FC<Props> = ({ role }) => {
                         </div>
                     </div>
                   </section>
-                  {/* ... Rest of Assessment Tab sections remain (WCAG, IA, etc.) as per previous version ... */}
+                  
+                  <section className="space-y-8 pt-8 border-t border-white/5">
+                    <div className="flex items-center gap-4">
+                        <div className="w-2 h-10 bg-indigo-500 rounded-full" />
+                        <h3 className="text-3xl font-black text-white uppercase tracking-tighter">2. Usability Paradox</h3>
+                    </div>
+                    <p className="text-base text-slate-400 font-semibold leading-relaxed p-10 bg-slate-900/40 rounded-[2.5rem] border border-white/5">
+                      {audit.usabilityParadox}
+                    </p>
+                  </section>
+
+                  <section className="space-y-8 pt-8 border-t border-white/5">
+                    <div className="flex items-center gap-4">
+                        <div className="w-2 h-10 bg-rose-500 rounded-full" />
+                        <h3 className="text-3xl font-black text-white uppercase tracking-tighter">3. Accessibility (WCAG)</h3>
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-6">
+                       {audit.wcagIssues.map((issue, i) => (
+                         <div key={i} className="p-8 bg-slate-900 border border-white/5 rounded-3xl space-y-3">
+                            <span className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em]">{issue.standard}</span>
+                            <p className="text-sm font-bold text-slate-300">{issue.description}</p>
+                         </div>
+                       ))}
+                    </div>
+                  </section>
                </div>
             </div>
           )}
@@ -376,9 +420,14 @@ export const SentimentAnalyzer: React.FC<Props> = ({ role }) => {
                   </div>
                </div>
                <div className="glass-card p-12 rounded-[4rem] border border-white/10 shadow-2xl space-y-8">
-                  <h4 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
-                    <TrendingUp className="w-5 h-5 text-indigo-400" /> Sentiment Trend
-                  </h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
+                      <TrendingUp className="w-5 h-5 text-indigo-400" /> Strategic Sentiment Trend
+                    </h4>
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-950 px-4 py-1.5 rounded-full border border-white/5">
+                      Reconstructed 6-Month Timeline
+                    </span>
+                  </div>
                   <div className="h-[350px]">
                     <canvas ref={trendChartRef} />
                   </div>
@@ -393,7 +442,7 @@ export const SentimentAnalyzer: React.FC<Props> = ({ role }) => {
                   <div key={source.id} className="glass-card p-8 rounded-3xl border border-white/5 flex items-center justify-between group">
                     <div>
                       <h4 className="text-xs font-black text-white uppercase">{source.name}</h4>
-                      <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase tracking-widest">{source.count} Datapoints</p>
+                      <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase tracking-widest">{source.count.toLocaleString()} Datapoints</p>
                     </div>
                     <div className="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center border border-teal-500/20 group-hover:bg-teal-500 group-hover:text-slate-950 transition-all">
                       <ExternalLink className="w-4 h-4" />
@@ -496,7 +545,7 @@ export const SentimentAnalyzer: React.FC<Props> = ({ role }) => {
               <div className="p-4 bg-slate-800 rounded-2xl border border-white/5"><TrendingUp className="w-6 h-6" /></div>
               <div className="p-4 bg-slate-800 rounded-2xl border border-white/5"><Monitor className="w-6 h-6" /></div>
            </div>
-           <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-500">Awaiting Strategic Protocol Initiation</p>
+           <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-500">Awaiting Product Pulse Initiation</p>
         </div>
       )}
 

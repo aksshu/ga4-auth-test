@@ -1,22 +1,25 @@
 
 import { supabase } from '../supabaseClient';
-import { ProjectContext, KPIDictionary, KPIThreshold, KPIFact, CSVUploadLog, JiraConnection, ReleaseReport, JiraCustomFieldMapping, GA4Settings, GA4SyncHistory } from '../types';
+import { ProjectContext, KPIDictionary, KPIThreshold, KPIFact, CSVUploadLog, JiraConnection, ReleaseReport, JiraCustomFieldMapping } from '../types';
 
 /**
  * Executes a Supabase query with a safety timeout and retry logic.
+ * Optimized to balance between fast-failing for UI snappiness and waiting for slow connections.
  */
 async function safeQuery<T>(
   promiseFn: () => Promise<{data: T | null, error: any}>, 
   defaultVal: T, 
   context: string,
   retries: number = 2,
-  timeoutMs: number = 12000 
+  timeoutMs: number = 12000 // Increased default base timeout to 12s
 ): Promise<T> {
   for (let attempt = 1; attempt <= retries; attempt++) {
+    // Controller for the individual request timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
+      // Note: We use the race approach for the timeout error message clarity
       const timeoutPromise = new Promise<{data: null, error: any}>((_, reject) => {
         setTimeout(() => reject(new Error(`Timeout: ${context} exceeded ${timeoutMs/1000}s limit.`)), timeoutMs);
       });
@@ -27,6 +30,7 @@ async function safeQuery<T>(
       if (error) {
         console.warn(`[DB-Service] [${new Date().toISOString()}] Attempt ${attempt}/${retries} failed for ${context}:`, error.message);
         if (attempt === retries) return defaultVal;
+        // Exponential backoff: 1s, 2s...
         await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
         continue;
       }
@@ -37,7 +41,12 @@ async function safeQuery<T>(
       const isTimeout = err.message?.includes('Timeout');
       console.error(`[DB-Service] [${new Date().toISOString()}] Attempt ${attempt}/${retries} ${isTimeout ? 'timed out' : 'error'} in ${context}:`, err.message || err);
       
-      if (attempt === retries) return defaultVal;
+      if (attempt === retries) {
+        console.error(`[DB-Service] All ${retries} attempts exhausted for ${context}. Returning fallback value.`);
+        return defaultVal;
+      }
+      
+      // Wait before retry
       await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
     }
   }
@@ -52,11 +61,12 @@ export const databaseService = {
     const cachedData = cachedRaw ? JSON.parse(cachedRaw) : [];
 
     const fetchWorkspaces = async () => {
+      // Increased timeout for initial workspace load to 15s to handle cold starts
       const data = await safeQuery(
         () => supabase.from('workspaces').select('*').order('created_at', { ascending: false }),
         null, 
         'Get Workspaces',
-        3, 
+        3, // Increased retries for initial load
         15000 
       );
 
@@ -67,8 +77,9 @@ export const databaseService = {
       return cachedData;
     };
 
+    // If we have cached data, return it immediately and refresh in background
     if (cachedData.length > 0) {
-      fetchWorkspaces().catch(err => console.warn("[DB-Service] Background refresh issue:", err));
+      fetchWorkspaces().catch(err => console.warn("[DB-Service] Background workspace refresh encountered issues (expected behavior if offline):", err));
       return cachedData;
     }
 
@@ -90,41 +101,6 @@ export const databaseService = {
     const { data, error } = await supabase.from('workspaces').update(payload).eq('id', id).select().single();
     if (error) throw error;
     return data;
-  },
-
-  // GA4 CORE
-  async getGA4Settings(): Promise<GA4Settings | null> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
-    
-    return safeQuery(
-      () => supabase.from('user_ga4_settings').select('*').eq('user_id', user.id).maybeSingle(),
-      null,
-      'Get GA4 Settings',
-      1,
-      8000
-    );
-  },
-
-  async saveGA4Settings(settings: Omit<GA4Settings, 'id' | 'user_id'>): Promise<GA4Settings> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("Auth required");
-
-    const payload = { ...settings, user_id: user.id };
-    const { data, error } = await supabase
-      .from('user_ga4_settings')
-      .upsert(payload, { onConflict: 'user_id,property_id' })
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
-  },
-
-  async logGA4Sync(history: Omit<GA4SyncHistory, 'id' | 'user_id'>): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase.from('ga4_sync_history').insert([{ ...history, user_id: user.id }]);
   },
 
   // JIRA CORE
@@ -150,7 +126,7 @@ export const databaseService = {
 
   async saveJiraConnection(conn: Omit<JiraConnection, 'id' | 'user_id'>): Promise<JiraConnection> {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("Authentication required.");
+    if (!user) throw new Error("Authentication required for Jira synchronization.");
 
     const payload = { ...conn, user_id: user.id, is_active: true };
     const { data, error } = await supabase
@@ -159,22 +135,34 @@ export const databaseService = {
       .select()
       .single();
     
-    if (error) throw error;
+    if (error) {
+      console.error("[DB-Service] Jira connection upsert failed:", error);
+      throw error;
+    }
     return data;
   },
 
   // JIRA MAPPINGS
   async saveCustomFieldMapping(mapping: Omit<JiraCustomFieldMapping, 'id'>): Promise<void> {
-    await supabase.from('jira_custom_field_mappings').upsert(mapping, { onConflict: 'jira_connection_id,field_name' });
+    const { error } = await supabase
+      .from('jira_custom_field_mappings')
+      .upsert(mapping, { onConflict: 'jira_connection_id,field_name' });
+    
+    if (error) {
+      console.error("[DB-Service] Custom field mapping save failed:", error);
+      throw error;
+    }
   },
 
   async getCustomFieldMapping(connectionId: string, fieldName: string): Promise<string | null> {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('jira_custom_field_mappings')
       .select('jira_field_id')
       .eq('jira_connection_id', connectionId)
       .eq('field_name', fieldName)
       .maybeSingle();
+    
+    if (error) return null;
     return data?.jira_field_id || null;
   },
 
@@ -182,36 +170,74 @@ export const databaseService = {
   async getReleaseReports(): Promise<ReleaseReport[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
+
     return safeQuery(
-      () => supabase.from('release_reports').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+      () => supabase
+        .from('release_reports')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false }),
       [],
-      'Get Release Reports'
+      'Get Release Reports',
+      1,
+      10000
     );
   },
 
   async saveReleaseReport(report: Omit<ReleaseReport, 'id' | 'user_id'>): Promise<ReleaseReport> {
     const { data: { user } } = await supabase.auth.getUser();
-    const payload = { ...report, user_id: user?.id };
-    const { data, error } = await supabase.from('release_reports').insert([payload]).select().single();
+    if (!user) throw new Error("Auth required");
+
+    const payload = { ...report, user_id: user.id };
+    const { data, error } = await supabase
+      .from('release_reports')
+      .insert([payload])
+      .select()
+      .single();
+    
     if (error) throw error;
     return data;
   },
 
   // TENANTS & FACTS
   async getAvailableTenants(): Promise<string[]> {
-    const data = await safeQuery(() => supabase.from('kpi_daily_facts').select('tenant_id'), [], 'Get Tenants');
+    const data = await safeQuery(
+      () => supabase.from('kpi_daily_facts').select('tenant_id'), 
+      [], 
+      'Get Available Tenants',
+      1,
+      12000
+    );
     return Array.from(new Set(data.filter(d => d.tenant_id).map(d => d.tenant_id)));
   },
 
   async getTenantFacts(tenantId: string): Promise<KPIFact[]> {
-    return safeQuery(() => supabase.from('kpi_daily_facts').select('*').eq('tenant_id', tenantId).order('kpi_date', { ascending: true }), [], `Get Facts: ${tenantId}`);
+    return safeQuery(
+      () => supabase.from('kpi_daily_facts').select('*').eq('tenant_id', tenantId).order('kpi_date', { ascending: true }),
+      [],
+      `Get Facts for Tenant: ${tenantId}`,
+      1,
+      15000
+    );
   },
 
   async getFactsForRange(tenantId: string, days: number): Promise<KPIFact[]> {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     const dateStr = startDate.toISOString().split('T')[0];
-    return safeQuery(() => supabase.from('kpi_daily_facts').select('*').eq('tenant_id', tenantId).gte('kpi_date', dateStr).order('kpi_date', { ascending: true }), [], `Get Facts Range: ${tenantId}`);
+    
+    return safeQuery(
+      () => supabase
+        .from('kpi_daily_facts')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .gte('kpi_date', dateStr)
+        .order('kpi_date', { ascending: true }),
+      [],
+      `Get Facts for Range: ${tenantId}`,
+      1,
+      15000
+    );
   },
 
   async bulkIngestFacts(facts: KPIFact[]): Promise<void> {
@@ -221,21 +247,34 @@ export const databaseService = {
   },
 
   async getKPIDictionary(keys?: string[]): Promise<KPIDictionary[]> {
-    return safeQuery(() => {
-      let query = supabase.from('kpi_dictionary').select('*');
-      if (keys && keys.length > 0) query = query.in('kpi_key', keys);
-      return query;
-    }, [], 'Get Dictionary');
+    return safeQuery(
+      () => {
+        let query = supabase.from('kpi_dictionary').select('*');
+        if (keys && keys.length > 0) query = query.in('kpi_key', keys);
+        return query;
+      }, 
+      [], 
+      'Get Dictionary',
+      1,
+      12000
+    );
   },
 
   async saveKPIDefinition(definition: KPIDictionary, tenantId: string): Promise<void> {
     const payload = { ...definition } as any;
     delete payload.id;
-    await supabase.from('kpi_dictionary').upsert(payload, { onConflict: 'kpi_key' });
+    const { error: dictError } = await supabase.from('kpi_dictionary').upsert(payload, { onConflict: 'kpi_key' });
+    if (dictError) throw dictError;
   },
 
   async getTenantThresholds(tenantId: string): Promise<KPIThreshold[]> {
-    return safeQuery(() => supabase.from('kpi_thresholds').select('*').eq('tenant_id', tenantId), [], 'Get Thresholds');
+    return safeQuery(
+      () => supabase.from('kpi_thresholds').select('*').eq('tenant_id', tenantId), 
+      [], 
+      'Get Thresholds',
+      1,
+      12000
+    );
   },
 
   async saveThresholds(thresholds: KPIThreshold[]): Promise<void> {
@@ -243,15 +282,26 @@ export const databaseService = {
       const { id, ...rest } = t;
       return rest;
     });
-    await supabase.from('kpi_thresholds').upsert(cleanThresholds, { onConflict: 'tenant_id,kpi_key' });
+    const { error } = await supabase.from('kpi_thresholds').upsert(cleanThresholds, { onConflict: 'tenant_id,kpi_key' });
+    if (error) throw error;
   },
 
   async logUpload(log: Omit<CSVUploadLog, 'id'>): Promise<void> {
-    await supabase.from('csv_upload_log').insert([log]);
+    try {
+      await supabase.from('csv_upload_log').insert([log]);
+    } catch (err) {
+      console.warn("[DB-Service] Non-critical logging failure.");
+    }
   },
 
   async getCSVTemplateHeaders(): Promise<string[]> {
-    const data = await safeQuery(() => supabase.from('csv_template_headers').select('column_name'), [], 'Get Headers');
+    const data = await safeQuery(
+      () => supabase.from('csv_template_headers').select('column_name'), 
+      [], 
+      'Get Template Headers',
+      1,
+      10000
+    );
     if (data.length > 0) return data.map(d => d.column_name);
     return ['tenant_id', 'site_id', 'kpi_date'];
   },
