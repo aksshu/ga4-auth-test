@@ -61,35 +61,28 @@ export const GA4DirectConnector: React.FC<Props> = ({ onComplete, onCancel }) =>
   // }, []);
 
 useEffect(() => {
-  const urlParams = new URLSearchParams(window.location.search);
-  const oauthSuccess = urlParams.get('oauth_success');
-  const error = urlParams.get('error');
-  
-  if (error) {
-    setError('Authentication failed: ' + error);
-    setStep('auth');
-    // Clean URL
-    window.history.replaceState({}, document.title, window.location.pathname);
-    return;
+  console.log("Connector mounted → checking OAuth state");
+
+  const params = new URLSearchParams(window.location.search);
+  const oauthSuccess = params.get("oauth_success");
+
+  const token = sessionStorage.getItem("ga4_access_token");
+  const email = sessionStorage.getItem("ga4_user_email");
+
+  if (email) {
+    setUserEmail(email);
   }
-  
-  if (oauthSuccess === 'true') {
-    // Check if tokens are in sessionStorage
-    const accessToken = sessionStorage.getItem('ga4_access_token');
-    const userEmail = sessionStorage.getItem('ga4_user_email');
-    
-    if (accessToken) {
-      setUserEmail(userEmail || '');
-      setStep('properties');
-      
-      // Clean URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-    } else {
-      setError('Authentication failed - no token found');
-      setStep('auth');
-    }
+
+  if (oauthSuccess === "true" || token) {
+    console.log("OAuth success detected → moving to properties");
+
+    setStep("properties");
+
+    // Clean URL so refresh doesn't re-trigger
+    window.history.replaceState({}, document.title, window.location.pathname);
   }
 }, []);
+
   
   const handleAuth = () => {
     sessionStorage.removeItem('ga4_access_token');
