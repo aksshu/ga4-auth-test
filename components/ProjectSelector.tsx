@@ -21,9 +21,9 @@ export const ProjectSelector: React.FC<Props> = ({ projects, role, onSelect, onC
         </div>
         
         <div className="space-y-4">
-          <h2 className="text-5xl font-black text-white tracking-tighter">Strategic Vault Empty</h2>
+          <h2 className="text-5xl font-black text-white tracking-tighter">No Projects</h2>
           <p className="text-slate-400 font-medium text-lg max-w-xl mx-auto leading-relaxed">
-            No active strategic modules detected. Choose to initialize a new custom workspace or deploy a <span className="text-teal-400">Quick-Start Template</span> to explore the protocol.
+            No active projects detected. Choose to initialize a new custom workspace or deploy a <span className="text-teal-400">Quick-Start Template</span> to explore the protocol.
           </p>
         </div>
 
@@ -64,7 +64,7 @@ export const ProjectSelector: React.FC<Props> = ({ projects, role, onSelect, onC
             onClick={onCreateNew}
             className="flex items-center justify-center gap-3 px-12 py-6 bg-teal-500 text-slate-900 rounded-[2.5rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-teal-400 transition-all shadow-2xl shadow-teal-500/20 active:scale-95 group"
           >
-            <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" /> Initialize Custom Strategic Module
+            <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" /> New Project
           </button>
         </div>
       </div>
@@ -75,14 +75,14 @@ export const ProjectSelector: React.FC<Props> = ({ projects, role, onSelect, onC
     <div className="max-w-6xl mx-auto py-12 space-y-12 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 px-4">
         <div>
-          <h2 className="text-5xl font-black text-white tracking-tighter">Strategic Vault</h2>
-          <p className="text-slate-400 font-medium mt-3 text-lg">Select a live environment or synthesize a new context.</p>
+          <h2 className="text-5xl font-black text-white tracking-tighter">Proejct Dashboard</h2>
+          <p className="text-slate-400 font-medium mt-3 text-lg">Select a Project from the list or Create New.</p>
         </div>
         <button
           onClick={onCreateNew}
           className="flex items-center justify-center gap-3 px-10 py-5 bg-teal-500 text-slate-900 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-teal-400 transition-all shadow-2xl shadow-teal-500/20 active:scale-95"
         >
-          <Plus className="w-5 h-5" /> Initialize New Module
+          <Plus className="w-5 h-5" /> Create New Project
         </button>
       </div>
 
@@ -102,7 +102,7 @@ export const ProjectSelector: React.FC<Props> = ({ projects, role, onSelect, onC
                 {p.type === 'Mobile' ? <Smartphone className="w-6 h-6" /> : <FolderOpen className="w-6 h-6" />}
               </div>
               <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${p.is_demo ? 'bg-teal-500/10 text-teal-400 border-teal-500/20' : 'bg-slate-800/50 text-slate-500 border-white/5'}`}>
-                {p.is_demo ? 'Simulation Node' : 'Encrypted Vault'}
+                {p.is_demo ? 'Simulation Node' :'*'}
               </div>
             </div>
 
@@ -113,7 +113,7 @@ export const ProjectSelector: React.FC<Props> = ({ projects, role, onSelect, onC
             </div>
 
             <div className="pt-8 border-t border-white/5 flex items-center justify-between relative z-10">
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover:text-teal-500 transition-colors">Access Architecture</span>
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover:text-teal-500 transition-colors">Open Project</span>
               <ArrowRight className="w-5 h-5 text-slate-600 group-hover:text-teal-400 group-hover:translate-x-2 transition-all" />
             </div>
           </button>
