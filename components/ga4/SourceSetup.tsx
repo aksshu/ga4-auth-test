@@ -165,7 +165,7 @@ export const SourceSetup: React.FC<Props> = ({ project, ga4Config, setGa4Config,
             <div className="max-w-md space-y-4">
               <h3 className="text-2xl font-black text-white">Live Account Discovery</h3>
               <p className="text-slate-400 text-sm font-semibold leading-relaxed">
-                Connect your Google account to retrieve actual properties and containers. We use <b>read-only</b> API access to sync your strategic dashboard.
+                Connect your Google account to retrieve actual properties and containers. We use <b>read-only</b> API access to sync your dashboard.
               </p>
             </div>
             <button 
