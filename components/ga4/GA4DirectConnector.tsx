@@ -279,7 +279,7 @@ useEffect(() => {
               <div className="w-24 h-24 bg-slate-800 rounded-[2.5rem] flex items-center justify-center border border-white/10 shadow-2xl">
                 <Lock className="w-10 h-10 text-blue-400" />
               </div>
-              <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Strategic Authentication</h3>
+              <h3 className="text-2xl font-black text-white uppercase tracking-tighter"> Authentication</h3>
               <button onClick={handleAuth} className="w-full max-w-sm py-6 bg-white text-slate-900 rounded-[2rem] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-4 hover:bg-blue-50 transition-all">
                 {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <LogIn className="w-5 h-5" />}
                 Sign In with Google
@@ -320,7 +320,7 @@ useEffect(() => {
             <div className="space-y-10 animate-in slide-in-from-right">
               <div className="grid md:grid-cols-2 gap-8">
                 <div className="space-y-4">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Strategic Tenant ID</label>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"> Tenant ID</label>
                   <input className="w-full px-6 py-4 bg-slate-900 border-2 border-slate-800 rounded-2xl text-white font-bold outline-none focus:border-blue-500" value={tenantId} onChange={e => setTenantId(e.target.value)} />
                 </div>
                 <div className="space-y-4">
