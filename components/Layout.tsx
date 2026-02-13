@@ -52,7 +52,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 className="flex items-center gap-2 text-[10px] font-black text-slate-400 hover:text-teal-400 transition-colors uppercase tracking-widest"
               >
                 <Home className="w-3.5 h-3.5" />
-                Vault
+                Projects
               </button>
 
               {projectName && (
