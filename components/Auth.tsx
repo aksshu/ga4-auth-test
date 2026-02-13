@@ -35,7 +35,7 @@ export const Auth: React.FC<Props> = ({ onRoleSelect }) => {
             <UserCheck className="w-10 h-10 text-teal-400" />
           </div>
           <h2 className="text-4xl font-black text-white tracking-tighter mb-3">Product Pulse</h2>
-          <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.3em]">Accessing Strategic Product Toolkit</p>
+          <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.3em]">Product Toolkit</p>
         </div>
 
         <div className="space-y-8">
@@ -43,10 +43,7 @@ export const Auth: React.FC<Props> = ({ onRoleSelect }) => {
              <div className="w-12 h-12 bg-slate-900 text-teal-400 rounded-xl flex items-center justify-center mx-auto shadow-xl">
                <Edit3 className="w-6 h-6" />
              </div>
-             <div>
-               <h4 className="text-white font-black uppercase text-xs tracking-widest">Editor Access Engaged</h4>
-               <p className="text-[10px] text-teal-500/60 font-black uppercase tracking-widest mt-1">Full operational permissions granted</p>
-             </div>
+           
           </div>
 
           <button
