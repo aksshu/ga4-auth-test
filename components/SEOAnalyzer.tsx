@@ -30,7 +30,7 @@ export const SEOAnalyzer: React.FC<Props> = ({ role }) => {
     "Analyzing Cumulative Layout Shift (CLS)...",
     "Measuring Largest Contentful Paint (LCP)...",
     "Synthesizing SEO recommendations...",
-    "Finalizing strategic audit matrix..."
+   
   ];
 
   useEffect(() => {
@@ -60,7 +60,7 @@ export const SEOAnalyzer: React.FC<Props> = ({ role }) => {
       setReports(results);
     } catch (err) {
       console.error(err);
-      alert("Strategic audit failed. Please verify your connection to simulation nodes.");
+      alert(" audit failed. Please verify your connection to simulation nodes.");
     } finally {
       setLoading(false);
     }
@@ -118,7 +118,7 @@ export const SEOAnalyzer: React.FC<Props> = ({ role }) => {
   const exportPDF = () => {
     const doc = new jsPDF() as any;
     doc.setFontSize(20);
-    doc.text("Strategic SEO & Lighthouse Audit", 14, 22);
+    doc.text(" SEO & Lighthouse Audit", 14, 22);
     doc.setFontSize(10);
     doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 30);
 
@@ -187,7 +187,7 @@ export const SEOAnalyzer: React.FC<Props> = ({ role }) => {
                 className="flex-1 bg-teal-500 text-slate-950 py-5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-teal-400 transition-all shadow-2xl shadow-teal-500/20 disabled:opacity-50"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5 fill-current" />}
-                Initiate Strategic Audit
+                Initiate Audit
               </button>
               
               <button className="px-10 py-5 glass-card border border-white/5 rounded-2xl text-slate-400 hover:text-white transition-all font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3">
@@ -205,7 +205,7 @@ export const SEOAnalyzer: React.FC<Props> = ({ role }) => {
           </div>
           <div className="space-y-2 relative z-10">
             <h4 className="text-2xl font-black text-white uppercase tracking-tighter">AI Lighthouse Engine</h4>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed">Simulated multi-modal audits grounded in Core Web Vital benchmarks and Google PageSpeed protocols.</p>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed">WIP - Benchmarking capabilities with peers.</p>
           </div>
         </div>
       </div>
@@ -218,7 +218,7 @@ export const SEOAnalyzer: React.FC<Props> = ({ role }) => {
              <Activity className="absolute inset-0 m-auto w-8 h-8 text-teal-400 animate-pulse" />
            </div>
            <div className="space-y-4">
-              <h4 className="text-xl font-black text-white uppercase tracking-tighter">Strategic Synthesis in Progress</h4>
+              <h4 className="text-xl font-black text-white uppercase tracking-tighter"> Synthesis in Progress</h4>
               <div className="flex flex-col items-center gap-2">
                  <p className="text-xs font-black text-teal-500 uppercase tracking-[0.2em] animate-pulse">
                    {stages[loadingStage]}
@@ -292,7 +292,7 @@ export const SEOAnalyzer: React.FC<Props> = ({ role }) => {
         <div className="space-y-8 animate-in slide-in-from-bottom duration-700">
           <div className="flex items-center justify-between px-4">
              <div>
-               <h4 className="text-3xl font-black text-white tracking-tighter">Strategic Audit Matrix</h4>
+               <h4 className="text-3xl font-black text-white tracking-tighter"> Audit Report</h4>
                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-1 flex items-center gap-2">
                  <Clock className="w-3 h-3" /> Latest Scan: {new Date().toLocaleString()}
                </p>
@@ -411,7 +411,7 @@ export const SEOAnalyzer: React.FC<Props> = ({ role }) => {
                                 <div className="space-y-6">
                                    <div className="flex items-center gap-3 mb-2">
                                       <Zap className="w-5 h-5 text-amber-400" />
-                                      <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Strategic Recommendations</h5>
+                                      <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest"> Recommendations</h5>
                                    </div>
                                    <div className="space-y-3">
                                       {report.recommendations.map((rec, i) => (
@@ -422,7 +422,7 @@ export const SEOAnalyzer: React.FC<Props> = ({ role }) => {
                                       ))}
                                    </div>
                                    <button className="w-full py-4 bg-slate-800 text-teal-400 rounded-2xl font-black text-[9px] uppercase tracking-widest border border-teal-500/10 hover:bg-teal-500 hover:text-slate-950 transition-all">
-                                      Generate Jira Story for URL
+                                      Generate Jira Story for URL (WIP)
                                    </button>
                                 </div>
                              </div>
@@ -445,7 +445,7 @@ export const SEOAnalyzer: React.FC<Props> = ({ role }) => {
               <Zap className="w-12 h-12" />
            </div>
            <div className="space-y-2">
-              <h4 className="text-xl font-black text-white uppercase tracking-tighter">Strategic Mapping Inactive</h4>
+              <h4 className="text-xl font-black text-white uppercase tracking-tighter"> Mapping Inactive</h4>
               <p className="text-xs text-slate-500 font-bold uppercase tracking-widest max-w-xs mx-auto leading-relaxed">Enter a project URL node to begin the multi-modal audit sequence.</p>
            </div>
         </div>
