@@ -31,26 +31,26 @@ export const ProjectSetup: React.FC<Props> = ({ onComplete }) => {
             <Layers className="w-7 h-7" />
           </div>
           <div>
-            <h2 className="text-3xl font-black text-white tracking-tight leading-none mb-2">Module Setup</h2>
-            <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em]">Initialize strategic context</p>
+            <h2 className="text-3xl font-black text-white tracking-tight leading-none mb-2">Project Setup</h2>
+            <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em]">Initialize context</p>
           </div>
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="space-y-3">
-            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Context Identifier</label>
+            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Project Name</label>
             <input
               type="text"
               required
               className="w-full px-6 py-5 rounded-2xl border-2 border-slate-800 bg-slate-900/50 text-white font-bold placeholder:text-slate-700 focus:border-teal-500 focus:ring-0 outline-none transition-all shadow-inner"
-              placeholder="e.g. Q4 Growth Sprint"
+              placeholder="Material Plus"
               value={formData.name}
               onChange={e => setFormData({ ...formData, name: e.target.value })}
             />
           </div>
           
           <div className="space-y-3">
-            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Operational Domain</label>
+            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Project Archetype</label>
             <div className="relative">
               <select
                 required
@@ -58,7 +58,7 @@ export const ProjectSetup: React.FC<Props> = ({ onComplete }) => {
                 value={formData.type}
                 onChange={e => setFormData({ ...formData, type: e.target.value })}
               >
-                <option value="" className="text-slate-700">Select Architecture...</option>
+                <option value="" className="text-slate-700">Select Project Archetype...</option>
                 <option value="SaaS" className="text-slate-200">B2B SaaS Engine</option>
                 <option value="Mobile" className="text-slate-200">Native Ecosystem</option>
                 <option value="Internal" className="text-slate-200">Enterprise Protocol</option>
@@ -71,7 +71,7 @@ export const ProjectSetup: React.FC<Props> = ({ onComplete }) => {
           </div>
 
           <div className="space-y-3">
-            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Executive Summary</label>
+            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Project Description</label>
             <textarea
               required
               rows={4}
@@ -86,7 +86,7 @@ export const ProjectSetup: React.FC<Props> = ({ onComplete }) => {
             type="submit"
             className="w-full bg-teal-500 text-slate-900 py-6 rounded-2xl font-black text-xs uppercase tracking-[0.3em] flex items-center justify-center gap-4 hover:bg-teal-400 transition-all shadow-2xl shadow-teal-500/20 mt-4 group"
           >
-            Deploy Module <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
+            Create Project <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
           </button>
         </form>
       </div>
