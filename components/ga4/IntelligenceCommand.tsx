@@ -37,7 +37,7 @@ export const IntelligenceCommand: React.FC<Props> = ({
           <div className="text-center py-10 px-4 space-y-8">
             <div className="space-y-2">
               <p className="text-white font-black text-xs uppercase tracking-widest">Leadership Interface</p>
-              <p className="text-slate-500 text-[10px] leading-relaxed font-bold">Ask strategic questions grounded in your telemetry.</p>
+              <p className="text-slate-500 text-[10px] leading-relaxed font-bold">Ask questions grounded in your data.</p>
             </div>
             <div className="grid gap-2">
               {["Why is revenue down?", "What's the biggest risk?", "Growth blockers?"].map(q => (
