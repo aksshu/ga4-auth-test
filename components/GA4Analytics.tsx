@@ -297,7 +297,7 @@ export const GA4Analytics: React.FC<GA4AnalyticsProps> = ({
           <div className="max-w-6xl mx-auto space-y-12 animate-in zoom-in-95 duration-500">
             <div className="text-center space-y-4">
               <h2 className="text-5xl font-black text-white tracking-tighter uppercase">Grounding Core Discovery</h2>
-              <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.4em]">Select a validated telemetry stream to initialize the strategic matrix</p>
+              <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.4em]">Select a GA4 Property</p>
             </div>
             
             <div className="grid lg:grid-cols-3 gap-8">
@@ -312,11 +312,11 @@ export const GA4Analytics: React.FC<GA4AnalyticsProps> = ({
                            <span className="text-[7px] text-slate-500 font-black uppercase mt-1">Last Sync: 2h ago</span>
                         </div>
                      </div>
-                     <h3 className="text-2xl font-black text-white uppercase tracking-tight">Apps Script <span className="text-[10px] text-slate-500 block mt-1 tracking-widest">Automated Protocol</span></h3>
-                     <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed">Bidirectional stream utilizing Google Apps Script nodes to push deterministic fact data directly into the vault.</p>
+                     <h3 className="text-2xl font-black text-white uppercase tracking-tight">DB via Script <span className="text-[10px] text-slate-500 block mt-1 tracking-widest">DEV only</span></h3>
+                     <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed"></p>
                   </div>
                   <div className="space-y-4">
-                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-2">Select Active Stream</label>
+                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-2">Select Active Dataset</label>
                     <div className="relative">
                       <select 
                         className="w-full px-8 py-5 bg-slate-900 border-2 border-slate-800 rounded-3xl text-white font-black text-[10px] uppercase tracking-widest outline-none focus:border-emerald-500 appearance-none shadow-inner cursor-pointer"
@@ -337,13 +337,13 @@ export const GA4Analytics: React.FC<GA4AnalyticsProps> = ({
                         <FileUp className="w-7 h-7" />
                      </div>
                      <h3 className="text-2xl font-black text-white uppercase tracking-tight">Manual Import <span className="text-[10px] text-slate-500 block mt-1 tracking-widest">CSV Ingestion</span></h3>
-                     <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed">Off-grid ingestion pipeline for batched telemetry uploads. Strictly validated against cryptographic schemas.</p>
+                     <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed"></p>
                   </div>
                   <button 
                     onClick={() => setShowUploader(true)}
                     className="w-full py-5 bg-slate-800 text-white border border-white/5 rounded-3xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-teal-500 hover:text-slate-950 transition-all shadow-xl shadow-teal-500/5"
                   >
-                    Upload Strategic Batch <ArrowRight className="w-4 h-4" />
+                    Upload Data <ArrowRight className="w-4 h-4" />
                   </button>
                </div>
 
@@ -353,10 +353,10 @@ export const GA4Analytics: React.FC<GA4AnalyticsProps> = ({
                         <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center text-blue-400 border border-white/5 group-hover:bg-blue-500 group-hover:text-white transition-all shadow-2xl">
                            <Globe className="w-7 h-7" />
                         </div>
-                        <span className="px-3 py-1 bg-blue-500/20 text-blue-400 text-[8px] font-black uppercase rounded-full border border-blue-500/20 tracking-widest">BETA</span>
+                        <span className="px-3 py-1 bg-blue-500/20 text-blue-400 text-[8px] font-black uppercase rounded-full border border-blue-500/20 tracking-widest"></span>
                      </div>
-                     <h3 className="text-2xl font-black text-white uppercase tracking-tight">Direct Link <span className="text-[10px] text-blue-500/60 block mt-1 tracking-widest">GA4 Cloud Handshake</span></h3>
-                     <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed">Establish a persistent OAuth tunnel to Google Cloud nodes. Directly pull live dimensions and metrics.</p>
+                     <h3 className="text-2xl font-black text-white uppercase tracking-tight">Direct Link <span className="text-[10px] text-blue-500/60 block mt-1 tracking-widest">GA4 integration</span></h3>
+                     <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed">Directly pull live dimensions and metrics.</p>
                   </div>
                   <div className="relative">
                     <button 
@@ -383,7 +383,7 @@ export const GA4Analytics: React.FC<GA4AnalyticsProps> = ({
             <div className="space-y-4">
               <h2 className="text-4xl font-black text-white uppercase tracking-tighter">No Telemetry Detected</h2>
               <p className="text-slate-400 font-medium text-lg">
-                The strategic vault for <span className="text-teal-400">{selectedTenant}</span> is currently empty. Initialize a data stream to proceed.
+                The workspace for <span className="text-teal-400">{selectedTenant}</span> is currently empty. Initialize a data stream to proceed.
               </p>
             </div>
             <div className="grid gap-4">
@@ -395,7 +395,7 @@ export const GA4Analytics: React.FC<GA4AnalyticsProps> = ({
                   <div className="p-4 bg-blue-500/10 text-blue-400 rounded-2xl group-hover:bg-blue-500 group-hover:text-white transition-all"><Globe className="w-6 h-6" /></div>
                   <div className="text-left">
                     <p className="text-sm font-black text-white uppercase tracking-widest">Connect & Sync GA4</p>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Establish direct Google Cloud handshake</p>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Establish GA4 integration</p>
                   </div>
                 </div>
                 <ArrowRight className="w-6 h-6 text-slate-700 group-hover:text-blue-400 group-hover:translate-x-2 transition-all" />
@@ -455,7 +455,7 @@ export const GA4Analytics: React.FC<GA4AnalyticsProps> = ({
              <div className="flex items-center justify-between">
                 <div>
                    <h2 className="text-4xl font-black text-white tracking-tighter">Threshold Calibration</h2>
-                   <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.4em] mt-2">Setting strategic guardrails</p>
+                   <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.4em] mt-2">Setting guardrails</p>
                 </div>
                 <button onClick={() => handleFinalize()} className="px-10 py-5 bg-teal-500 text-slate-900 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl flex items-center gap-3 hover:bg-teal-400 transition-all">
                   Initialize Dashboard <ArrowRight className="w-5 h-5" />
@@ -552,7 +552,7 @@ export const GA4Analytics: React.FC<GA4AnalyticsProps> = ({
             <div className="max-w-6xl mx-auto flex items-center justify-between px-8 py-6 bg-slate-900/60 border border-white/5 rounded-[2.5rem] shadow-2xl backdrop-blur-md">
               <div className="flex items-center gap-4">
                 <Zap className="w-6 h-6 text-indigo-400" />
-                <h2 className="text-xl font-black text-white uppercase tracking-tighter">Strategic Intelligence Layer</h2>
+                <h2 className="text-xl font-black text-white uppercase tracking-tighter"> Intelligence Layer</h2>
               </div>
               <button 
                 onClick={() => setStep(Step.DASHBOARD)} 
