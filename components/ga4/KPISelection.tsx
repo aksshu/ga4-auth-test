@@ -19,7 +19,7 @@ export const KPISelection: React.FC<Props> = ({ kpis, onToggle, onConfirm, loadi
   return (
     <div className="space-y-12 animate-in fade-in duration-700">
       <div className="text-center">
-        <h2 className="text-4xl font-black text-white mb-3 tracking-tight">Strategic KPI Selection</h2>
+        <h2 className="text-4xl font-black text-white mb-3 tracking-tight">KPI Selection</h2>
         <p className="text-slate-400 font-medium">Calibrated for <span className="text-teal-400 font-bold uppercase tracking-widest text-xs px-2 py-1 bg-teal-500/10 rounded-lg border border-teal-500/20 ml-1">{domainName}</span></p>
       </div>
       
