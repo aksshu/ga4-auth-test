@@ -189,7 +189,7 @@ export const SentimentAnalyzer: React.FC<Props> = ({ role }) => {
           {[
             { id: 'input', label: 'URL Entry', step: 'input' },
             { id: 'sources', label: 'Verify Sources', step: 'sources' },
-            { id: 'results', label: 'Strategic Audit', step: 'results' }
+            { id: 'results', label: ' Audit', step: 'results' }
           ].map((s, idx) => (
             <React.Fragment key={s.id}>
               <div className="flex items-center gap-3">
@@ -218,7 +218,7 @@ export const SentimentAnalyzer: React.FC<Props> = ({ role }) => {
             </div>
             <div>
               <h3 className="text-4xl font-black text-white uppercase tracking-tighter">Sentiment Discovery</h3>
-              <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.4em] mt-1">Multi-modal AI Scraping & Verification Protocol</p>
+              <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.4em] mt-1">AI based sentiment analysis</p>
             </div>
           </div>
           <div className="relative max-w-2xl mx-auto space-y-6">
@@ -238,7 +238,7 @@ export const SentimentAnalyzer: React.FC<Props> = ({ role }) => {
               className="w-full py-6 bg-teal-500 text-slate-950 rounded-[2.5rem] font-black text-xs uppercase tracking-widest shadow-2xl shadow-teal-500/20 hover:bg-teal-400 flex items-center justify-center gap-3 transition-all disabled:opacity-50"
             >
               {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
-              Initiate Multi-Source Scan
+              Initiate Scan
             </button>
           </div>
         </div>
@@ -250,7 +250,7 @@ export const SentimentAnalyzer: React.FC<Props> = ({ role }) => {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-3xl font-black text-white tracking-tight uppercase">Review Source Verification</h3>
-                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-1">Verify or augment the auto-detected telemetry nodes</p>
+                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-1">Verify the source</p>
               </div>
               <button onClick={addNewSource} className="px-6 py-3 bg-slate-800 text-teal-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/5 flex items-center gap-2 hover:bg-teal-500 hover:text-slate-950 transition-all">
                 <Plus className="w-4 h-4" /> Add Manually
@@ -316,7 +316,7 @@ export const SentimentAnalyzer: React.FC<Props> = ({ role }) => {
                 className="px-16 py-6 bg-indigo-600 text-white rounded-[2.5rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-indigo-600/20 hover:bg-indigo-500 transition-all flex items-center justify-center gap-4 mx-auto disabled:opacity-50"
               >
                 {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <Activity className="w-5 h-5" />}
-                Execute Multi-Modal Audit
+                Execute Audit
               </button>
             </div>
           </div>
@@ -422,7 +422,7 @@ export const SentimentAnalyzer: React.FC<Props> = ({ role }) => {
                <div className="glass-card p-12 rounded-[4rem] border border-white/10 shadow-2xl space-y-8">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
-                      <TrendingUp className="w-5 h-5 text-indigo-400" /> Strategic Sentiment Trend
+                      <TrendingUp className="w-5 h-5 text-indigo-400" />  Sentiment Trend
                     </h4>
                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-950 px-4 py-1.5 rounded-full border border-white/5">
                       Reconstructed 6-Month Timeline
