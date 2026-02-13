@@ -241,7 +241,7 @@ export const DynamicDashboard: React.FC<Props> = ({ tenantId, availableMetrics }
                   <Zap className="w-3 h-3" /> Grounding Engine
                 </div>
                 <p className="text-[9px] text-slate-500 font-bold uppercase leading-relaxed">
-                  The model will select the most appropriate timeframe and chart type based on your strategic intent.
+                  The model will select the most appropriate timeframe and chart type based on your intent.
                 </p>
               </div>
 
@@ -297,7 +297,7 @@ export const DynamicDashboard: React.FC<Props> = ({ tenantId, availableMetrics }
             <div className="flex-1">
               <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-1">Source Lineage</p>
               <p className="text-[11px] text-slate-300 font-bold italic leading-relaxed">
-                Visualizing <span className="text-teal-400 font-black">{manualConfig.metrics.length} metrics</span> over a <span className="text-teal-400 font-black">{manualConfig.days}-day</span> strategic window. Data grounded in Supabase `kpi_daily_facts` node.
+                Visualizing <span className="text-teal-400 font-black">{manualConfig.metrics.length} metrics</span> over a <span className="text-teal-400 font-black">{manualConfig.days}-day</span> Data grounded in Supabase `kpi_daily_facts` node.
               </p>
             </div>
           </div>
